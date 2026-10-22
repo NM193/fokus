@@ -120,4 +120,5 @@ pastel key. The rules that carry it:
 - `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
   GitHub Release and the `latest.json` installed copies check at launch
   (`UpdateNotice`). Signed with `~/.tauri/fokus.key` (Tauri's update key, not
-  Apple's: the app is not notarised, so a first open is right-click -> Open)
+  Apple's: the app is not notarised, so the first open needs System Settings ->
+  Privacy & Security -> Open Anyway; right-click -> Open before macOS 15)

@@ -23,8 +23,9 @@
 #   - Only the version bump is committed: the repo is public, and whatever else
 #     is lying in the working tree is not this script's to publish.
 #
-# The app is not signed by Apple, so the .dmg opens the first time with a
-# right-click -> Open. Updates after that install without asking.
+# The app is not signed by Apple, so the first open of the .dmg's app needs
+# System Settings -> Privacy & Security -> Open Anyway (right-click -> Open
+# before macOS 15). Updates after that install without asking.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
