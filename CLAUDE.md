@@ -48,6 +48,11 @@ The timer's logic stays in the main window's frontend. The app around it:
   when a phase is over -- a hidden web view's timers are slowed right down,
   but it still answers events, and it finishes the phase then.
 - **The chime is played by the app** (`ring` → `afplay`), not the web view.
+- **A notification at the end of a phase** (`src/lib/notify.ts`,
+  tauri-plugin-notification), sent from `useTimer`'s `onEnd` beside the
+  chime, only while the window is not focused. macOS asks once, the first
+  time. A dev build sends them as Terminal, which macOS drops: try them in
+  the built app.
 - **Commands from the menu bar and the mini timer** arrive as
   `fokus://command` ("toggle" / "skip") and run through the same `timer`
   functions as the buttons.

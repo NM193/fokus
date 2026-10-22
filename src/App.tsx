@@ -8,10 +8,11 @@ import { TaskList } from "./components/TaskList";
 import { Widget, widgetLine } from "./components/Widget";
 import { isDesktop } from "./lib/desktop";
 import { clock, duration } from "./lib/format";
+import { phaseEnded, tell } from "./lib/notify";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
 import { useDesktop } from "./lib/useDesktop";
 import { useSession } from "./lib/useSession";
-import { PHASE_NAME, useTimer, type Timer } from "./lib/useTimer";
+import { PHASE_NAME, phaseLength, useTimer, type Timer } from "./lib/useTimer";
 import { useWidget } from "./lib/useWidget";
 
 const TITLES = {
@@ -35,7 +36,17 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [summary, setSummary] = useState<string | null>(null);
   const session = useSession();
-  const timer = useTimer(settings, { onFocus: session.addFocus, onRound: session.addRound });
+  const current = session.tasks.find((t) => !t.done)?.title;
+  const timer = useTimer(settings, {
+    onFocus: session.addFocus,
+    onRound: session.addRound,
+    onEnd: (ended, next, started) => {
+      if (!settings.notify) return;
+      const minutes = phaseLength(next, settings) / 60_000;
+      const { title, body } = phaseEnded(ended, next, minutes, started, current);
+      void tell(title, body);
+    },
+  });
   const widget = useWidget(settings.palette);
 
   const update = useCallback((patch: Partial<Settings>) => {
@@ -55,7 +66,6 @@ export default function App() {
     document.documentElement.dataset.surface = isDesktop ? settings.surface : "solid";
   }, [settings.surface]);
 
-  const current = session.tasks.find((t) => !t.done)?.title;
   useDesktop(timer, current, settings);
 
   // The time shows in the window title and the Dock's window menu while it runs.

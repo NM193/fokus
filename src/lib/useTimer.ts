@@ -43,6 +43,8 @@ type Hooks = {
   onFocus: (ms: number) => void;
   /** A focus block ran to its end (or was skipped). */
   onRound: () => void;
+  /** A phase ran out just now (not skipped), and `next` follows; `started` if by itself. */
+  onEnd: (ended: Phase, next: Phase, started: boolean) => void;
 };
 
 export type Timer = ReturnType<typeof useTimer>;
@@ -92,6 +94,7 @@ export function useTimer(settings: Settings, hooks: Hooks) {
       const phase = nextPhase(s.phase, round, conf.every);
       if (s.phase === "long") round = 0;
       if (!quiet && conf.sound) chime();
+      if (!quiet) hooksRef.current.onEnd(s.phase, phase, conf.autoStart);
 
       if (!conf.autoStart) return { phase, round, endsAt: null, left: null, markAt: null };
       return {

@@ -15,6 +15,8 @@ export type Settings = {
   /** Start the next phase by itself when one ends. */
   autoStart: boolean;
   sound: boolean;
+  /** The Mac app says so on screen when a phase ends, unless its window is in front. */
+  notify: boolean;
   palette: Palette;
   surface: Surface;
   /** The Mac app opens with the Mac, quietly, into the menu bar. */
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   every: 4,
   autoStart: false,
   sound: true,
+  notify: true,
   palette: "lavender",
   surface: "glass",
   openAtLogin: true,

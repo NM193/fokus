@@ -115,6 +115,11 @@ export function SettingsView({ settings, update, historyCount, onClearHistory }:
         <Setting title="Chime" hint="A soft two-note sound when a phase ends.">
           <Switch label="Chime" on={settings.sound} onChange={(sound) => update({ sound })} />
         </Setting>
+        {isDesktop && (
+          <Setting title="Notification" hint="A note on screen when a phase ends, unless Fokus is already in front.">
+            <Switch label="Notification" on={settings.notify} onChange={(notify) => update({ notify })} />
+          </Setting>
+        )}
       </div>
 
       {isDesktop && (
