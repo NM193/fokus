@@ -9,7 +9,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::widget;
+use crate::{shortcut, widget};
 
 const TRAY_ID: &str = "fokus";
 const MENU_TOGGLE: &str = "toggle";
@@ -39,7 +39,9 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
 fn menu(app: &AppHandle, running: bool) -> tauri::Result<Menu<tauri::Wry>> {
     let menu = Menu::new(app)?;
     let label = if running { "Pause" } else { "Start" };
-    menu.append(&MenuItem::with_id(app, MENU_TOGGLE, label, true, None::<&str>)?)?;
+    // The accelerator only labels the item: the shortcut itself is global
+    // (shortcut.rs) and works without the menu open.
+    menu.append(&MenuItem::with_id(app, MENU_TOGGLE, label, true, Some(shortcut::ACCELERATOR))?)?;
     menu.append(&MenuItem::with_id(app, MENU_SKIP, "Skip to next", true, None::<&str>)?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&MenuItem::with_id(app, MENU_WIDGET, "Mini timer", true, None::<&str>)?)?;

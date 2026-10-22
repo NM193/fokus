@@ -31,7 +31,8 @@ frontend still runs in a plain browser tab; everything desktop-only checks
   `WidgetWindow`.
 - `src-tauri/src/` `clock` (menu bar clock and the end-of-phase alarm),
   `tray` (menu bar icon and menu), `widget` (the mini timer's window), `glass`
-  (vibrancy), `chime` (the sound), `commands` (thin).
+  (vibrancy), `chime` (the sound), `login` (open at login), `shortcut` (the
+  global key), `commands` (thin).
 - `scripts/make-assets.py` draws the app icon, the menu bar icon and the
   chime. It is their only source; `npx tauri icon src-tauri/icons/app-icon.png`
   makes the icon sizes.
@@ -53,6 +54,14 @@ The timer's logic stays in the main window's frontend. The app around it:
 - **Glass.** Both windows are always transparent and forced to the light
   appearance; Settings → Window picks glass (macOS vibrancy behind a pastel
   tint) or solid paper.
+- **Open at login** (on by default, Settings → Mac): a LaunchAgent
+  (`~/Library/LaunchAgents/Fokus.plist`) starts the app with `--hidden`, so it
+  comes up as the menu bar clock with no window. The main window is
+  `visible: false` in tauri.conf.json and shown from setup otherwise. Dev
+  builds never register: they would point login at target/debug.
+- **⌃⌥F starts and pauses from any app** (`shortcut.rs`). Registered after
+  the plugin, so a shortcut already taken elsewhere means no shortcut rather
+  than an app that will not start.
 
 ## Mini timer (widget)
 A small always-on-top window with the time, phase, current task, start/pause
@@ -97,5 +106,6 @@ pastel key. The rules that carry it:
 - `npx tauri dev` -- the Mac app in dev (Vite on http://localhost:1424; 1420 is Tzz's)
 - `npm run dev` -- the frontend alone, in a browser
 - `npm run build` -- typecheck and build the frontend
-- `npx tauri build --bundles app` -- `src-tauri/target/release/bundle/macos/Fokus.app`
+- `npx tauri build --bundles app` -- `src-tauri/target/release/bundle/macos/Fokus.app`;
+  installed by copying it over `/Applications/Fokus.app` (quit the running one first)
 - `cd src-tauri && cargo test` -- the menu bar clock's text

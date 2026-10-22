@@ -17,6 +17,8 @@ export type Settings = {
   sound: boolean;
   palette: Palette;
   surface: Surface;
+  /** The Mac app opens with the Mac, quietly, into the menu bar. */
+  openAtLogin: boolean;
 };
 
 export const FOCUS_OPTIONS = [15, 25, 30, 45, 60, 90];
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   palette: "lavender",
   surface: "glass",
+  openAtLogin: true,
 };
 
 const KEY = "fokus.settings.v1";

@@ -3,7 +3,7 @@
 use tauri::{AppHandle, State};
 
 use crate::clock::{Clock, TimerState};
-use crate::{chime, glass, tray, widget};
+use crate::{chime, glass, login, tray, widget};
 
 /// The window's timer changed: start, pause, a new phase, a reset.
 #[tauri::command]
@@ -23,6 +23,11 @@ pub fn ring() {
 #[tauri::command]
 pub fn set_glass(app: AppHandle, glass: bool) {
     glass::main(&app, glass);
+}
+
+#[tauri::command]
+pub fn set_open_at_login(app: AppHandle, on: bool) {
+    login::set(&app, on);
 }
 
 #[tauri::command]

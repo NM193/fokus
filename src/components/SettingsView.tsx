@@ -117,6 +117,24 @@ export function SettingsView({ settings, update, historyCount, onClearHistory }:
         </Setting>
       </div>
 
+      {isDesktop && (
+        <div className="section">
+          <h2>Mac</h2>
+          <Setting title="Open at login" hint="Starts with the Mac, quietly, as the clock in the menu bar.">
+            <Switch
+              label="Open at login"
+              on={settings.openAtLogin}
+              onChange={(openAtLogin) => update({ openAtLogin })}
+            />
+          </Setting>
+          <Setting title="Start and pause from anywhere" hint="Works in every app, with Fokus hidden.">
+            <kbd className="keys" aria-label="Control Option F">
+              ⌃⌥F
+            </kbd>
+          </Setting>
+        </div>
+      )}
+
       <div className="section">
         <h2>Data</h2>
         <Setting

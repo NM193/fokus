@@ -2,6 +2,8 @@ mod chime;
 mod clock;
 mod commands;
 mod glass;
+mod login;
+mod shortcut;
 mod tray;
 mod widget;
 
@@ -11,9 +13,17 @@ use tauri::{Emitter, Manager, WindowEvent};
 pub fn run() {
     tauri::Builder::default()
         .manage(clock::Clock::default())
+        .plugin(login::plugin())
+        .plugin(shortcut::plugin())
         .setup(|app| {
             tray::build(app.handle())?;
             clock::start(app.handle().clone());
+            shortcut::register(app);
+            // The window starts hidden (tauri.conf.json) and is shown here,
+            // unless this is a launch at login: then the menu bar is enough.
+            if !login::launched_hidden() {
+                tray::show_main(app.handle());
+            }
             Ok(())
         })
         .on_window_event(|window, event| match event {
@@ -32,6 +42,7 @@ pub fn run() {
             commands::sync_timer,
             commands::ring,
             commands::set_glass,
+            commands::set_open_at_login,
             commands::toggle_widget,
             commands::widget_open,
         ])

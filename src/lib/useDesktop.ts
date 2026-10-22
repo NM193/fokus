@@ -55,4 +55,9 @@ export function useDesktop(timer: Timer, current: string | undefined, settings: 
     if (!isDesktop) return;
     void invoke("set_glass", { glass: settings.surface === "glass" });
   }, [settings.surface]);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    void invoke("set_open_at_login", { on: settings.openAtLogin });
+  }, [settings.openAtLogin]);
 }
