@@ -71,6 +71,28 @@ export function useSession() {
     setSession((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }));
   }, []);
 
+  /** A blank title keeps the old one: emptying a task is not how it goes. */
+  const rename = useCallback((id: string, title: string) => {
+    const clean = title.trim();
+    if (!clean) return;
+    setSession((s) => ({
+      ...s,
+      tasks: s.tasks.map((t) => (t.id === id ? { ...t, title: clean } : t)),
+    }));
+  }, []);
+
+  /** Put a task at another place in the list. The first open one is "now". */
+  const move = useCallback((id: string, to: number) => {
+    setSession((s) => {
+      const from = s.tasks.findIndex((t) => t.id === id);
+      if (from < 0 || from === to) return s;
+      const tasks = [...s.tasks];
+      const [task] = tasks.splice(from, 1);
+      tasks.splice(Math.max(0, Math.min(to, tasks.length)), 0, task);
+      return { ...s, tasks };
+    });
+  }, []);
+
   const addFocus = useCallback((ms: number) => {
     setSession((s) => ({ ...s, focusMs: s.focusMs + ms }));
   }, []);
@@ -120,6 +142,8 @@ export function useSession() {
     add,
     toggle,
     remove,
+    rename,
+    move,
     addFocus,
     addRound,
     end,

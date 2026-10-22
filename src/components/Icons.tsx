@@ -98,3 +98,17 @@ export const CloseIcon = (p: Props) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 );
+
+export const PencilIcon = (p: Props) => (
+  <svg {...base(p)}>
+    <path d="M4 20h4L18.5 9.5a2.83 2.83 0 0 0-4-4L4 16v4z" />
+    <path d="M13.5 6.5l4 4" />
+  </svg>
+);
+
+/** Two rules: the handle a row is dragged by. */
+export const GripIcon = (p: Props) => (
+  <svg {...base(p)}>
+    <path d="M5 9.5h14M5 14.5h14" />
+  </svg>
+);

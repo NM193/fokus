@@ -96,7 +96,9 @@ pastel key. The rules that carry it:
   and big numbers; sans for anything clickable; mono uppercase and dim for
   anything you only read.
 - **One gesture.** Things arrive from below; rules (including the task strike)
-  draw from the left.
+  draw from the left. A task row that has been moved or renamed is marked
+  `data-still` and stops animating: React moving a DOM node replays its CSS
+  animations, so a dropped row would arrive all over again.
 - The timer and the tasks are the app. Statistics stay secondary, on their own
   screen.
 
