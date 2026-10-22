@@ -16,6 +16,8 @@ pub fn run() {
         .plugin(login::plugin())
         .plugin(shortcut::plugin())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             tray::build(app.handle())?;
             clock::start(app.handle().clone());

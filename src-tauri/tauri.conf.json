@@ -48,5 +48,13 @@
     "macOS": {
       "minimumSystemVersion": "11.0"
     }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/NM193/fokus/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI2QUU1OEJCRENGRURFRjYKUldUMjN2N2N1MWl1dHJNaXd2T2RUTzZRb3R0TFdYa1FERDZnN0NIT0hwcVo2Um16Y2k0bmp4KzQK"
+    }
   }
 }

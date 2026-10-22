@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { HistoryIcon, SettingsIcon, TimerIcon, WidgetIcon } from "./Icons";
+import { UpdateNotice } from "./UpdateNotice";
 
 export type View = "focus" | "history" | "settings";
 
@@ -97,6 +98,8 @@ export function Sidebar({ view, onNavigate, status, widget }: Props) {
         </span>
         {rows(onNavigate)}
       </div>
+
+      <UpdateNotice />
 
       <button
         type="button"

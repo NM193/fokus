@@ -2,6 +2,8 @@ node_modules
 dist
 .DS_Store
 .playwright-mcp
+# Session notes; this repo is public
+.claude/
 
 # Tauri
 src-tauri/target

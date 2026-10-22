@@ -8,7 +8,8 @@ History.
 
 A **macOS desktop app** (Tauri v2, built like Tzz in `../yt-mp3`). The same
 frontend still runs in a plain browser tab; everything desktop-only checks
-`isDesktop` (`src/lib/desktop.ts`). Git is deliberately not set up yet.
+`isDesktop` (`src/lib/desktop.ts`). The repo is public
+(github.com/NM193/fokus): the app updates itself from its GitHub Releases.
 
 ## Tech stack
 - React 18 + TypeScript + Vite; Tauri v2 (Rust) for the Mac app.
@@ -116,3 +117,7 @@ pastel key. The rules that carry it:
 - `npx tauri build --bundles app` -- `src-tauri/target/release/bundle/macos/Fokus.app`;
   installed by copying it over `/Applications/Fokus.app` (quit the running one first)
 - `cd src-tauri && cargo test` -- the menu bar clock's text
+- `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
+  GitHub Release and the `latest.json` installed copies check at launch
+  (`UpdateNotice`). Signed with `~/.tauri/fokus.key` (Tauri's update key, not
+  Apple's: the app is not notarised, so a first open is right-click -> Open)
