@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main window and the mini timer",
-  "windows": ["main", "widget"],
+  "description": "Permissions for the main window, the mini timer, the end-of-phase card and its effect",
+  "windows": ["main", "widget", "alert", "effect"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

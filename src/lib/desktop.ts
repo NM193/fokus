@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { WidgetLook } from "../components/Widget";
 import type { Palette } from "./settings";
 import type { Phase } from "./useTimer";
 
@@ -11,12 +12,16 @@ export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" 
 
 /** This web view is the mini timer's window, not the app's (src-tauri/src/widget.rs). */
 export const isWidgetWindow = isDesktop && getCurrentWindow().label === "widget";
+/** This web view is the end-of-phase card (src-tauri/src/alert.rs). */
+export const isAlertWindow = isDesktop && getCurrentWindow().label === "alert";
+/** This web view draws the effect that comes with the sound (src-tauri/src/effect.rs). */
+export const isEffectWindow = isDesktop && getCurrentWindow().label === "effect";
 
 /** The events the two windows and the app pass between them. */
 export const EVENTS = {
   /** Main window → widget: the timer as it now stands. */
   state: "fokus://state",
-  /** Widget or menu bar → main window: "toggle" or "skip". */
+  /** Widget, card or menu bar → main window: a `Command`. */
   command: "fokus://command",
   /** App → main window: the running phase's time is up. */
   due: "fokus://due",
@@ -24,9 +29,18 @@ export const EVENTS = {
   widget: "fokus://widget",
   /** Widget → main window: listening now, send the state. */
   widgetReady: "fokus://widget-ready",
+  /** App → widget: the pointer came over it or left, or it moved corner. */
+  widgetPlace: "fokus://widget-place",
+  /** App → card: what it says now. */
+  alert: "fokus://alert",
+  /** Card → main window: listening now, send the state. */
+  alertReady: "fokus://alert-ready",
+  /** App → effect: draw this one, now. */
+  effect: "fokus://effect",
 } as const;
 
-export type Command = "toggle" | "skip";
+/** "start" starts only what is not running: the card's button, pressed late, must not pause. */
+export type Command = "toggle" | "skip" | "start";
 
 /**
  * Everything the widget needs to draw itself. The time left is not in it:
@@ -44,6 +58,7 @@ export type Snapshot = {
   upNext: Phase;
   current: string | null;
   palette: Palette;
+  look: WidgetLook;
 };
 
 /**

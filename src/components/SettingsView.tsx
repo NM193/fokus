@@ -1,20 +1,34 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { isDesktop } from "../lib/desktop";
+import { flash } from "../lib/notify";
 import {
   EVERY_OPTIONS,
+  EVERY_RANGE,
   FOCUS_OPTIONS,
+  FOCUS_RANGE,
   LONG_OPTIONS,
+  LONG_RANGE,
+  OPACITY_OPTIONS,
   SHORT_OPTIONS,
+  SHORT_RANGE,
+  EFFECTS,
+  SOUNDS,
+  type Effect,
   type Palette,
   type Settings,
+  type SoundName,
   type Surface,
+  type WidgetSize,
 } from "../lib/settings";
+import { chime } from "../lib/sound";
+import { Round } from "./Round";
 
 type Props = {
   settings: Settings;
   update: (patch: Partial<Settings>) => void;
   historyCount: number;
   onClearHistory: () => void;
+  onShowGuide: () => void;
 };
 
 const PALETTES: { value: Palette; label: string; swatch: string[] }[] = [
@@ -23,9 +37,14 @@ const PALETTES: { value: Palette; label: string; swatch: string[] }[] = [
   { value: "rose", label: "Rose", swatch: ["#FFF8F2", "#F7DBD3", "#DDB8BC", "#A17F8E"] },
 ];
 
-const minutes = (values: number[]) => values.map((v) => ({ value: v, label: `${v}` }));
+export function SettingsView({ settings, update, historyCount, onClearHistory, onShowGuide }: Props) {
+  // Hear what was picked, once the slider has come to rest.
+  const listen = useRef<number | undefined>(undefined);
+  function tryOut(sound: SoundName, volume: number) {
+    window.clearTimeout(listen.current);
+    listen.current = window.setTimeout(() => chime(sound, volume), 250);
+  }
 
-export function SettingsView({ settings, update, historyCount, onClearHistory }: Props) {
   return (
     <>
       <h1 className="title">Settings</h1>
@@ -72,39 +91,47 @@ export function SettingsView({ settings, update, historyCount, onClearHistory }:
       </div>
 
       <div className="section">
-        <h2>Timer · minutes</h2>
-        <Setting title="Focus" hint="One block of work.">
-          <Segmented
-            label="Focus"
+        <h2>Timer</h2>
+        <Setting title="Focus · min" hint="Minutes of work in one block.">
+          <Count
+            label="Focus, minutes"
             value={settings.focus}
-            options={minutes(FOCUS_OPTIONS)}
+            options={FOCUS_OPTIONS}
+            range={FOCUS_RANGE}
             onChange={(focus) => update({ focus })}
           />
         </Setting>
-        <Setting title="Short break" hint="Between focus blocks.">
-          <Segmented
-            label="Short break"
+        <Setting title="Short break · min" hint="Minutes of rest after each focus block.">
+          <Count
+            label="Short break, minutes"
             value={settings.shortBreak}
-            options={minutes(SHORT_OPTIONS)}
+            options={SHORT_OPTIONS}
+            range={SHORT_RANGE}
             onChange={(shortBreak) => update({ shortBreak })}
           />
         </Setting>
-        <Setting title="Long break" hint="After a full round of blocks.">
-          <Segmented
-            label="Long break"
+        <Setting title="Long break · min" hint="Minutes of rest after the last block of a round, in place of the short one.">
+          <Count
+            label="Long break, minutes"
             value={settings.longBreak}
-            options={minutes(LONG_OPTIONS)}
+            options={LONG_OPTIONS}
+            range={LONG_RANGE}
             onChange={(longBreak) => update({ longBreak })}
           />
         </Setting>
-        <Setting title="Long break every" hint="How many focus blocks make a round.">
-          <Segmented
-            label="Long break every"
+        <Setting
+          title="Long break after · blocks"
+          hint="Focus blocks in a round. After the last one comes the long break, and a new round begins."
+        >
+          <Count
+            label="Long break after, focus blocks"
             value={settings.every}
-            options={EVERY_OPTIONS.map((v) => ({ value: v, label: `${v}` }))}
+            options={EVERY_OPTIONS}
+            range={EVERY_RANGE}
             onChange={(every) => update({ every })}
           />
         </Setting>
+        <Round settings={settings} />
       </div>
 
       <div className="section">
@@ -112,14 +139,136 @@ export function SettingsView({ settings, update, historyCount, onClearHistory }:
         <Setting title="Start the next phase by itself" hint="Otherwise the timer waits for you after every block and break.">
           <Switch label="Auto-start" on={settings.autoStart} onChange={(autoStart) => update({ autoStart })} />
         </Setting>
-        <Setting title="Chime" hint="A soft two-note sound when a phase ends.">
-          <Switch label="Chime" on={settings.sound} onChange={(sound) => update({ sound })} />
+        <Setting title="Sound" hint="Played when a phase ends.">
+          <Switch label="Sound" on={settings.sound} onChange={(sound) => update({ sound })} />
         </Setting>
+        {settings.sound && isDesktop && (
+          <Setting title="Which sound" hint="Fokus's own two soft notes, or one of the Mac's.">
+            <select
+              className="select"
+              aria-label="Which sound"
+              value={settings.soundName}
+              onChange={(event) => {
+                const soundName = event.target.value as SoundName;
+                update({ soundName });
+                tryOut(soundName, settings.soundVolume);
+              }}
+            >
+              {SOUNDS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </Setting>
+        )}
+        {settings.sound && (
+          <Setting title="Volume" hint="On top of the Mac's own volume.">
+            <span className="volume">
+              <input
+                type="range"
+                className="range"
+                aria-label="Volume"
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(settings.soundVolume * 100)}
+                onChange={(event) => {
+                  const soundVolume = Number(event.target.value) / 100;
+                  update({ soundVolume });
+                  tryOut(settings.soundName, soundVolume);
+                }}
+              />
+              <span className="volume__value">{Math.round(settings.soundVolume * 100)}%</span>
+            </span>
+          </Setting>
+        )}
+        {isDesktop && (
+          <Setting title="Effect" hint="What you see with the sound when a phase ends. Pick one to see it.">
+            <Segmented<Effect>
+              label="Effect"
+              value={settings.effect}
+              options={EFFECTS}
+              onChange={(effect) => {
+                update({ effect });
+                flash(effect, settings.palette);
+                if (effect !== "none" && settings.sound) chime(settings.soundName, settings.soundVolume);
+              }}
+            />
+          </Setting>
+        )}
+        {isDesktop && (
+          <Setting
+            title="Card on screen"
+            hint="A small card over every app, full screen ones too, when a phase ends. It stays until you answer it."
+          >
+            <Switch label="Card on screen" on={settings.alert} onChange={(alert) => update({ alert })} />
+          </Setting>
+        )}
         {isDesktop && (
           <Setting title="Notification" hint="A note on screen when a phase ends, unless Fokus is already in front.">
             <Switch label="Notification" on={settings.notify} onChange={(notify) => update({ notify })} />
           </Setting>
         )}
+      </div>
+
+      <div className="section">
+        <h2>Mini timer</h2>
+        <Setting
+          title="Size"
+          hint={
+            isDesktop
+              ? "It floats over every app, full screen ones too, so keep it as small as you like."
+              : "How much room it takes over other windows."
+          }
+        >
+          <Segmented<WidgetSize>
+            label="Size"
+            value={settings.widgetSize}
+            options={[
+              { value: "small", label: "Small" },
+              { value: "medium", label: "Medium" },
+              { value: "large", label: "Large" },
+            ]}
+            onChange={(widgetSize) => update({ widgetSize })}
+          />
+        </Setting>
+        {isDesktop && (
+          <Setting title="Opacity" hint="Lower lets what is behind it show through.">
+            <Segmented
+              label="Opacity"
+              value={settings.widgetOpacity}
+              options={OPACITY_OPTIONS.map((v) => ({ value: v, label: `${Math.round(v * 100)}%` }))}
+              onChange={(widgetOpacity) => update({ widgetOpacity })}
+            />
+          </Setting>
+        )}
+        <Setting title="Only the time" hint="The rest shows when the pointer is over it.">
+          <Switch label="Only the time" on={settings.widgetPeek} onChange={(widgetPeek) => update({ widgetPeek })} />
+        </Setting>
+        <Setting title="Phase" hint="Focus, short break or long break, over the time.">
+          <Switch label="Phase" on={settings.widgetPhase} onChange={(widgetPhase) => update({ widgetPhase })} />
+        </Setting>
+        <Setting title="Task" hint="The task you are on, or what comes next, under the time.">
+          <Switch label="Task" on={settings.widgetLine} onChange={(widgetLine) => update({ widgetLine })} />
+        </Setting>
+        <Setting
+          title="Start and pause"
+          hint={
+            isDesktop
+              ? "The button in the ring that fills as a phase passes. Without it, ⌃⌥F still starts and pauses."
+              : "The button in the ring that fills as a phase passes."
+          }
+        >
+          <Switch
+            label="Start and pause"
+            on={settings.widgetToggle}
+            onChange={(widgetToggle) => update({ widgetToggle })}
+          />
+        </Setting>
+        <Setting title="Skip" hint="Straight on to the next phase.">
+          <Switch label="Skip" on={settings.widgetSkip} onChange={(widgetSkip) => update({ widgetSkip })} />
+        </Setting>
       </div>
 
       {isDesktop && (
@@ -139,6 +288,15 @@ export function SettingsView({ settings, update, historyCount, onClearHistory }:
           </Setting>
         </div>
       )}
+
+      <div className="section">
+        <h2>Help</h2>
+        <Setting title="Guide" hint="The short tour from the first time Fokus opened.">
+          <button type="button" className="ghost ghost--small" onClick={onShowGuide}>
+            Show it again
+          </button>
+        </Setting>
+      </div>
 
       <div className="section">
         <h2>Data</h2>
@@ -163,6 +321,66 @@ function Setting({ title, hint, children }: { title: string; hint: string; child
         <span>{hint}</span>
       </div>
       <div className="setting__control">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * A length: the usual ones, or one of your own. The last button reads
+ * "Custom" until a length of your own is set, then shows it; clicking it
+ * opens a field (Enter or leaving it sets, Escape gives up).
+ */
+function Count({
+  label,
+  value,
+  options,
+  range: [min, max],
+  onChange,
+}: {
+  label: string;
+  value: number;
+  options: number[];
+  range: readonly [number, number];
+  onChange: (value: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const own = !options.includes(value);
+
+  function commit(text: string) {
+    setEditing(false);
+    const n = Math.round(Number(text));
+    if (text.trim() && Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));
+  }
+
+  return (
+    <div className="segmented" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button key={o} type="button" role="radio" aria-checked={o === value} onClick={() => onChange(o)}>
+          {o}
+        </button>
+      ))}
+      {editing ? (
+        <input
+          className="segmented__field"
+          type="number"
+          inputMode="numeric"
+          aria-label={`${label}, your own`}
+          min={min}
+          max={max}
+          defaultValue={own ? value : ""}
+          placeholder={`${min}–${max}`}
+          autoFocus
+          onBlur={(event) => commit(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Escape") setEditing(false);
+          }}
+        />
+      ) : (
+        <button type="button" role="radio" aria-checked={own} onClick={() => setEditing(true)}>
+          {own ? value : "Custom"}
+        </button>
+      )}
     </div>
   );
 }

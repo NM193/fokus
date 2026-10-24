@@ -23,6 +23,11 @@ tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 
+# The mini timer is an NSPanel, the only kind of window macOS lets float over
+# another app's full screen.
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-nspanel = "2.1"
+
 [profile.release]
 codegen-units = 1
 lto = true

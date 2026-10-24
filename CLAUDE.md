@@ -15,7 +15,8 @@ frontend still runs in a plain browser tab; everything desktop-only checks
 - React 18 + TypeScript + Vite; Tauri v2 (Rust) for the Mac app.
 - State lives in `localStorage` (`src/lib/store.ts`), one versioned key per
   concern: `fokus.settings.v1`, `fokus.timer.v1`, `fokus.session.v1`,
-  `fokus.history.v1`. A shape change bumps the key rather than migrating.
+  `fokus.history.v1`, `fokus.guide.v1` (the first-launch guide was seen). A
+  shape change bumps the key rather than migrating.
   The dev app (http://localhost:1424) and the built app (tauri://) are
   different origins, so they do not share data.
 
@@ -29,9 +30,13 @@ frontend still runs in a plain browser tab; everything desktop-only checks
 - `src/lib/settings.ts` lengths, palette, window surface, auto-start, chime.
 - `src/components/` `Sidebar` (nav pill taken from Tzz), `Dial` (ring and
   controls), `TaskList`, `HistoryView`, `SettingsView`, `Widget`,
-  `WidgetWindow`.
+  `WidgetWindow`, `AlertWindow` (the end-of-phase card), `EffectWindow`,
+  `Guide` (the first-launch tour, a `<dialog>`; Settings → Help shows it
+  again), `Round` (one round to scale, in Settings and the guide).
 - `src-tauri/src/` `clock` (menu bar clock and the end-of-phase alarm),
-  `tray` (menu bar icon and menu), `widget` (the mini timer's window), `glass`
+  `tray` (menu bar icon and menu), `widget` (the mini timer's window), `alert`
+  (the end-of-phase card), `effect` (what you see with the sound), `float`
+  (what those share: the panel, the rounded rim, glide and fade), `glass`
   (vibrancy), `chime` (the sound), `login` (open at login), `shortcut` (the
   global key), `commands` (thin).
 - `scripts/make-assets.py` draws the app icon, the menu bar icon and the
@@ -48,7 +53,24 @@ The timer's logic stays in the main window's frontend. The app around it:
   both). A Rust thread draws the time beside the icon and sends `fokus://due`
   when a phase is over -- a hidden web view's timers are slowed right down,
   but it still answers events, and it finishes the phase then.
-- **The chime is played by the app** (`ring` → `afplay`), not the web view.
+- **The sound is played by the app** (`ring` → `afplay`), not the web view:
+  Fokus's chime or one of the Mac's, at a volume (Settings → Behaviour).
+  Only names on the list in chime.rs are played; it mirrors `SOUNDS` in
+  settings.ts.
+- **A card at the end of a phase** (`alert.rs`, `AlertWindow`): a floating
+  panel at the top middle of the screen, sent from `useTimer`'s `onEnd` like
+  the notification and, like it, only while the window is not in front. It
+  stays until answered, or until the next phase is started anywhere. It is
+  made hidden at launch (`prepare_alert`) and only shown and hidden after:
+  making a web view activates the app (wry), which at the end of a phase
+  would take the keyboard from whatever you are typing in. Its button sends
+  `start`, which starts only what is not running.
+- **An effect with the sound** (`effect.rs`, `EffectWindow`, Settings →
+  Behaviour → Effect): a ripple out of the mini timer (the card's place when
+  it is closed) or a glow round the edges of the screen the pointer is on.
+  Every phase end, window in front or not; picking one in Settings shows it.
+  A clear, click-through panel over a whole screen, one level below the other
+  floating windows, made hidden at launch like the card.
 - **A notification at the end of a phase** (`src/lib/notify.ts`,
   tauri-plugin-notification), sent from `useTimer`'s `onEnd` beside the
   chime, only while the window is not focused. macOS asks once, the first
@@ -78,6 +100,27 @@ and skip. `Widget` only draws; the caller supplies the state.
   timer: the main window emits `fokus://state` snapshots, the widget counts
   down from `endsAt` itself and sends commands back. It asks for the first
   snapshot (`fokus://widget-ready`) only once its listener is registered.
+  It is turned into a non-activating NSPanel (tauri-nspanel): the only kind
+  of window macOS floats over another app's full screen.
+- **Settings → Mini timer:** size, opacity (Mac only) and which parts it
+  shows. What it shows and its scale travel with the state (`look`);
+  everything in the widget is in rem, so one root font size scales it. The
+  window's size (`widgetBox`, which mirrors the CSS) and opacity go to Rust
+  via `set_widget_look`.
+- **Only the time** (Settings → Mini timer): the widget shrinks to the time
+  (`widgetIdleBox`) and grows back while the pointer is over it. The web view
+  cannot tell (macOS sends hover only to the window in front), so Rust polls
+  the pointer (`widget::watch`) and sends `fokus://widget-place` (over, and
+  the corner nearest the screen's edges it grows from).
+- **Nothing jumps.** Every change of the widget's window (grow, shrink, fade
+  in on open, fade out on close, opacity) is one AppKit glide, `GLIDE`/`EASE`
+  in widget.rs, the same as `--glide`/`--ease` in the CSS: change both. The
+  web view never changes size on the way (a resized one redraws late and its
+  content shakes): it stays the full size, pinned by autoresizing margins to
+  that corner (`pin_page`), and the window only uncovers it. So the corners
+  and the rim are the window's content view's layer, not CSS. The rest fades
+  in and the time glides into place. The window opens hidden and is shown on
+  `fokus://widget-ready`.
 - **Browser:** Chrome's Document Picture-in-Picture, with `Widget` portalled
   into it. Styles are carried over by cloning `<style>`/`<link>` elements,
   never via `cssRules`: Chrome serialises a `font` shorthand holding a var()
@@ -109,6 +152,9 @@ pastel key. The rules that carry it:
   StrictMode calls updaters twice.
 - Do not edit Rust while trying the app with a timer running: `tauri dev`
   restarts the app on every Rust change.
+- No AppKit animator glide may still be running on a floating panel when it
+  is turned back into Tauri's window (`to_window`, before a close): AppKit's
+  KVO watch on it throws and the app crashes. So `float::close` fades by hand.
 
 ## Commands
 - `npx tauri dev` -- the Mac app in dev (Vite on http://localhost:1424; 1420 is Tzz's)
@@ -121,4 +167,6 @@ pastel key. The rules that carry it:
   GitHub Release and the `latest.json` installed copies check at launch
   (`UpdateNotice`). Signed with `~/.tauri/fokus.key` (Tauri's update key, not
   Apple's: the app is not notarised, so the first open needs System Settings ->
-  Privacy & Security -> Open Anyway; right-click -> Open before macOS 15)
+  Privacy & Security -> Open Anyway; right-click -> Open before macOS 15).
+  The release page also gives a Terminal line (`curl … | tar -xz -C
+  /Applications`) that installs with no quarantine, so nothing is asked

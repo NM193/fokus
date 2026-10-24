@@ -93,7 +93,7 @@ export function useTimer(settings: Settings, hooks: Hooks) {
       }
       const phase = nextPhase(s.phase, round, conf.every);
       if (s.phase === "long") round = 0;
-      if (!quiet && conf.sound) chime();
+      if (!quiet && conf.sound) chime(conf.soundName, conf.soundVolume);
       if (!quiet) hooksRef.current.onEnd(s.phase, phase, conf.autoStart);
 
       if (!conf.autoStart) return { phase, round, endsAt: null, left: null, markAt: null };

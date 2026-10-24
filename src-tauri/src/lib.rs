@@ -1,6 +1,9 @@
+mod alert;
 mod chime;
 mod clock;
 mod commands;
+mod effect;
+mod float;
 mod glass;
 mod login;
 mod shortcut;
@@ -11,8 +14,14 @@ use tauri::{Emitter, Manager, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+    builder
         .manage(clock::Clock::default())
+        .manage(widget::State::default())
+        .manage(alert::State::default())
+        .manage(effect::State::default())
         .plugin(login::plugin())
         .plugin(shortcut::plugin())
         .plugin(tauri_plugin_notification::init())
@@ -21,6 +30,7 @@ pub fn run() {
         .setup(|app| {
             tray::build(app.handle())?;
             clock::start(app.handle().clone());
+            widget::watch(app.handle().clone());
             shortcut::register(app);
             // The window starts hidden (tauri.conf.json) and is shown here,
             // unless this is a launch at login: then the menu bar is enough.
@@ -44,10 +54,17 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::sync_timer,
             commands::ring,
+            commands::prepare_alert,
+            commands::show_alert,
+            commands::alert_notice,
+            commands::hide_alert,
+            commands::prepare_effect,
+            commands::show_effect,
             commands::set_glass,
             commands::set_open_at_login,
             commands::toggle_widget,
             commands::widget_open,
+            commands::set_widget_look,
         ])
         .build(tauri::generate_context!())
         .expect("failed to start the app")

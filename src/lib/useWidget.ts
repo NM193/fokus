@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EVENTS, isDesktop, on } from "./desktop";
 import type { Palette } from "./settings";
 
-const SIZE = { width: 340, height: 132 };
+type Box = { width: number; height: number };
 
 export type WidgetApi = {
   supported: boolean;
@@ -35,8 +35,11 @@ function copyStyles(target: Document) {
  * holding ordinary HTML. It floats over every other app and closes when the
  * app's tab does. The app portals the widget into it, so there is one state.
  */
-function useBrowserWidget(palette: Palette): WidgetApi {
+function useBrowserWidget(palette: Palette, box: Box): WidgetApi {
   const [win, setWin] = useState<Window | null>(null);
+  // Read when it opens: Chrome sizes the window once, and the user can resize it.
+  const size = useRef(box);
+  size.current = box;
   const supported = typeof window !== "undefined" && "documentPictureInPicture" in window;
 
   const toggle = useCallback(async () => {
@@ -47,7 +50,7 @@ function useBrowserWidget(palette: Palette): WidgetApi {
       return;
     }
     try {
-      const pip = await api.requestWindow(SIZE);
+      const pip = await api.requestWindow(size.current);
       copyStyles(pip.document);
       pip.document.title = "Fokus";
       pip.addEventListener("pagehide", () => setWin(null), { once: true });
@@ -82,6 +85,6 @@ function useDesktopWidget(): WidgetApi {
 }
 
 /** The mini timer: a small always-on-top window with the time in it. */
-export const useWidget: (palette: Palette) => WidgetApi = isDesktop
+export const useWidget: (palette: Palette, box: Box) => WidgetApi = isDesktop
   ? useDesktopWidget
   : useBrowserWidget;

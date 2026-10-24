@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Dial } from "./components/Dial";
+import { Guide, guideSeen, markGuideSeen } from "./components/Guide";
 import { HistoryView } from "./components/HistoryView";
 import { SettingsView } from "./components/SettingsView";
 import { Sidebar, type Status, type View } from "./components/Sidebar";
 import { TaskList } from "./components/TaskList";
-import { Widget, widgetLine } from "./components/Widget";
+import { Widget, widgetBox, widgetLine, widgetLook } from "./components/Widget";
 import { isDesktop } from "./lib/desktop";
 import { clock, duration } from "./lib/format";
-import { phaseEnded, tell } from "./lib/notify";
+import { card, flash, phaseEnded, tell } from "./lib/notify";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
 import { useDesktop } from "./lib/useDesktop";
 import { useSession } from "./lib/useSession";
@@ -35,19 +36,24 @@ export default function App() {
   const [view, setView] = useState<View>("focus");
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [summary, setSummary] = useState<string | null>(null);
+  // The first launch here opens the guide; Settings → Help opens it again.
+  const [guide, setGuide] = useState(() => !guideSeen());
   const session = useSession();
   const current = session.tasks.find((t) => !t.done)?.title;
   const timer = useTimer(settings, {
     onFocus: session.addFocus,
     onRound: session.addRound,
     onEnd: (ended, next, started) => {
-      if (!settings.notify) return;
       const minutes = phaseLength(next, settings) / 60_000;
+      flash(settings.effect, settings.palette);
+      if (settings.alert) void card({ ended, next, minutes, started, task: next === "focus" ? current ?? null : null });
+      if (!settings.notify) return;
       const { title, body } = phaseEnded(ended, next, minutes, started, current);
       void tell(title, body);
     },
   });
-  const widget = useWidget(settings.palette);
+  const look = widgetLook(settings);
+  const widget = useWidget(settings.palette, widgetBox(look));
 
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => {
@@ -79,7 +85,7 @@ export default function App() {
     function onKey(event: KeyboardEvent) {
       if (event.code !== "Space" || event.repeat) return;
       const target = event.target as HTMLElement;
-      if (target.closest("input, textarea, select, button, [contenteditable]")) return;
+      if (target.closest("input, textarea, select, button, [contenteditable], dialog")) return;
       event.preventDefault();
       toggle();
     }
@@ -119,6 +125,7 @@ export default function App() {
       {widget.window &&
         createPortal(
           <Widget
+            look={look}
             phase={timer.phase}
             running={timer.running}
             remaining={timer.remaining}
@@ -164,9 +171,20 @@ export default function App() {
             update={update}
             historyCount={session.history.length}
             onClearHistory={session.clearHistory}
+            onShowGuide={() => setGuide(true)}
           />
         )}
       </main>
+
+      {guide && (
+        <Guide
+          settings={settings}
+          onClose={() => {
+            markGuideSeen();
+            setGuide(false);
+          }}
+        />
+      )}
     </div>
   );
 }

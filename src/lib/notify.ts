@@ -1,6 +1,8 @@
+import { invoke } from "@tauri-apps/api/core";
 import { sendNotification } from "@tauri-apps/plugin-notification";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isDesktop } from "./desktop";
+import type { Effect, Palette } from "./settings";
 import { PHASE_NAME, type Phase } from "./useTimer";
 
 /**
@@ -21,6 +23,36 @@ export async function tell(title: string, body: string) {
   } catch {
     // A courtesy; never let it get in the way of the phase that just ended.
   }
+}
+
+/**
+ * What the end-of-phase card says (src-tauri/src/alert.rs, AlertWindow).
+ * `task` only when focus is next.
+ */
+export type Notice = { ended: Phase; next: Phase; minutes: number; started: boolean; task: string | null };
+
+/**
+ * The card over everything when a phase ends: the chime alone is easy to
+ * miss. Only in the Mac app, and, like the notification, only while its
+ * window is not in front.
+ */
+export async function card(notice: Notice) {
+  if (!isDesktop) return;
+  try {
+    if (await getCurrentWindow().isFocused()) return;
+    await invoke("show_alert", { notice });
+  } catch {
+    // As above: never in the way of the phase that just ended.
+  }
+}
+
+/**
+ * What you see with the sound (src-tauri/src/effect.rs): at the end of every
+ * phase, the window in front or not, and when Settings tries one.
+ */
+export function flash(effect: Effect, palette: Palette) {
+  if (!isDesktop || effect === "none") return;
+  void invoke("show_effect", { kind: effect, palette }).catch(() => {});
 }
 
 /** "Short break, 5 min, has started." -- what the notification says. */

@@ -1150,7 +1150,7 @@ button:disabled {
   position: relative;
   isolation: isolate;
   height: 100vh;
-  padding: 0.5rem;
+  padding: 0.375rem;
   overflow: hidden;
   background: var(--bg);
 }
@@ -1174,12 +1174,9 @@ button:disabled {
 }
 
 .widget__glass {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  position: relative;
   height: 100%;
-  padding: 0 0.875rem;
-  border-radius: 1.125rem;
+  border-radius: 0.875rem;
   background: linear-gradient(135deg, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.14));
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   backdrop-filter: blur(16px) saturate(150%);
@@ -1187,6 +1184,16 @@ button:disabled {
     inset 0 1px 0 rgb(255 255 255 / 0.9),
     inset 0 0 0 1px rgb(255 255 255 / 0.45),
     0 10px 24px -14px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+/* What is in the glass. */
+.widget__body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 0 0.75rem;
 }
 
 .widget .ring__track {
@@ -1207,8 +1214,8 @@ button:disabled {
   display: grid;
   flex: none;
   place-items: center;
-  width: 4.75rem;
-  height: 4.75rem;
+  width: 3.25rem;
+  height: 3.25rem;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -1224,8 +1231,8 @@ button:disabled {
 .widget__icon {
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 1.875rem;
+  height: 1.875rem;
   border-radius: 50%;
   background: var(--ink);
   color: var(--bg);
@@ -1234,6 +1241,12 @@ button:disabled {
 
 .widget__toggle:hover .widget__icon {
   transform: scale(1.06);
+}
+
+/* The icons are drawn in px; these keep them in step with the widget's size. */
+.widget__icon svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
 }
 
 .widget__read {
@@ -1251,7 +1264,8 @@ button:disabled {
 }
 
 .widget__time {
-  font: 300 2.5rem/1.05 var(--font-sans);
+  align-self: flex-start;
+  font: 300 1.75rem/1.05 var(--font-sans);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--muted-2);
@@ -1266,14 +1280,49 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--muted-2);
 }
 
 .widget__skip {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.75rem;
+  height: 1.75rem;
   flex: none;
+}
+
+.widget__skip svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/*
+  Only the time (Settings → Mini timer). The rest is there all along, hidden;
+  with the pointer it fades in and the time glides from the middle to its
+  place. Nothing else moves. --glide is how long the Mac app's window takes to
+  grow and shrink (GLIDE in widget.rs), on the same --ease: change both.
+*/
+.widget {
+  --glide: 0.32s;
+}
+
+.widget[data-peek] .widget__more {
+  transition: opacity var(--glide) var(--ease) 0.04s;
+}
+
+.widget[data-idle] .widget__more {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s var(--ease);
+}
+
+.widget[data-peek] .widget__time {
+  transition:
+    color 0.3s,
+    transform var(--glide) var(--ease);
+}
+
+.widget[data-idle] .widget__time {
+  transform: translate(var(--x, 0), var(--y, 0));
 }
 
 /* ---------- the Mac app ------------------------------------------------- */
@@ -1320,11 +1369,12 @@ button:disabled {
   display: none;
 }
 
+/* The tint only. The page is often bigger than the window (widget.rs), so
+   the corners and the rim are the window's own. */
 :root[data-window="widget"] .widget__glass {
-  position: relative;
-  border-radius: 16px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--bg) 46%, transparent);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4);
+  box-shadow: none;
 }
 
 /* Text passes the pointer to the glass, so the window drags from anywhere. */
@@ -1334,12 +1384,12 @@ button:disabled {
 
 .widget__close {
   position: absolute;
-  top: 0.4375rem;
-  right: 0.4375rem;
+  top: 0.3125rem;
+  right: 0.3125rem;
   display: grid;
   place-items: center;
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 0.875rem;
+  height: 0.875rem;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -1351,14 +1401,113 @@ button:disabled {
     background 0.2s;
 }
 
+.widget__close svg {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
 .widget:hover .widget__close,
+.widget[data-over] .widget__close,
 .widget__close:focus-visible {
   opacity: 1;
+}
+
+.widget[data-idle] .widget__close {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .widget__close:hover {
   background: #fff;
   color: var(--ink);
+}
+
+/* The end-of-phase card's own window (alert.rs): real glass, as the mini
+   timer's; the corners and the rim are the window's (float.rs). */
+:root[data-window="alert"],
+:root[data-window="alert"] body {
+  background: transparent;
+}
+
+.alert {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0.875rem 1.125rem 1rem;
+  background: color-mix(in srgb, var(--bg) 46%, transparent);
+}
+
+.alert__eyebrow {
+  font: 500 0.5625rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--caption);
+}
+
+.alert__title {
+  margin: 0.25rem 0 0;
+  font: 400 1.75rem/1.05 var(--font-serif);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.alert__minutes {
+  margin-left: 0.25rem;
+  font: 500 0.6875rem var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--muted-2);
+}
+
+.alert__line {
+  overflow: hidden;
+  margin-top: 0.125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--muted-2);
+}
+
+.alert__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+/* The effect with the sound (effect.rs): a clear window over the screen,
+   below the mini timer and the card, that the pointer passes through. A
+   ripple leaves from the edge of the one it comes from; a glow breathes in
+   from the screen's edges, twice. Both are over before the window is put
+   away (LASTS in effect.rs). */
+:root[data-window="effect"],
+:root[data-window="effect"] body {
+  overflow: hidden;
+  background: transparent;
+}
+
+.effect-glow {
+  position: fixed;
+  inset: 0;
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--mid) 95%, transparent),
+    inset 0 0 64px 18px color-mix(in srgb, var(--accent) 50%, transparent),
+    inset 0 0 140px 40px color-mix(in srgb, var(--soft) 55%, transparent);
+  animation: edge-glow 2.8s ease-in-out both;
+}
+
+.effect-ring,
+.effect-halo {
+  position: fixed;
+  border-radius: 14px;
+}
+
+.effect-ring {
+  outline: 2px solid var(--accent);
+  animation: ripple 1.8s var(--ease) both;
+}
+
+.effect-halo {
+  box-shadow: 0 0 36px 12px color-mix(in srgb, var(--mid) 75%, transparent);
+  animation: halo 1.6s ease-out both;
 }
 
 /* ---------- history ----------------------------------------------------- */
@@ -1653,6 +1802,137 @@ button:disabled {
   transform: translateX(1.125rem);
 }
 
+/* A length of your own, typed where the "Custom" button was. */
+.segmented__field {
+  width: 3.5rem;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--ink);
+  font: 500 0.8125rem var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.segmented__field::-webkit-inner-spin-button,
+.segmented__field::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.segmented__field::placeholder {
+  color: var(--caption);
+  font-size: 0.6875rem;
+}
+
+.select {
+  padding: 0.4375rem 2rem 0.4375rem 0.875rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  /* A small "v": two half-squares meeting. */
+  background:
+    linear-gradient(45deg, transparent 50%, var(--muted-2) 50%) no-repeat calc(100% - 1.1875rem) 58% / 0.3125rem 0.3125rem,
+    linear-gradient(135deg, var(--muted-2) 50%, transparent 50%) no-repeat calc(100% - 0.875rem) 58% / 0.3125rem 0.3125rem,
+    var(--field);
+  color: var(--ink);
+  font: 500 0.8125rem var(--font-sans);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.select:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.volume {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.volume__value {
+  min-width: 2.5rem;
+  font: 500 0.6875rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--caption);
+}
+
+.range {
+  width: 10rem;
+  height: 1.25rem;
+  margin: 0;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--line-2);
+}
+
+.range::-webkit-slider-thumb {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: -0.4375rem;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: var(--field);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 20%, transparent);
+  -webkit-appearance: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--accent);
+}
+
+/* One round to scale, under the lengths: focus in the accent, rest softer. */
+.round {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.round__bar {
+  display: flex;
+  gap: 2px;
+  height: 0.5rem;
+}
+
+.round__bar i {
+  min-width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: draw 0.6s var(--ease) both;
+}
+
+.round__bar i[data-kind="short"] {
+  background: color-mix(in srgb, var(--mid) 55%, var(--soft));
+}
+
+.round__bar i[data-kind="long"] {
+  background: color-mix(in srgb, var(--accent) 40%, var(--mid));
+}
+
+.round__sum {
+  margin: 0.625rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--caption);
+}
+
+.round__sum b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
 /* A shortcut is something you only read: mono, but set like a key. */
 .keys {
   padding: 0.3125rem 0.625rem;
@@ -1663,6 +1943,195 @@ button:disabled {
   font: 500 0.8125rem var(--font-mono);
   letter-spacing: 0.08em;
   color: var(--muted-2);
+}
+
+/* ---------- guide ------------------------------------------------------- */
+
+/*
+  The first launch's tour (Guide). Every step is the same size, so moving on
+  only fades the next one in; the guide rises in once and fades out.
+*/
+.guide {
+  width: min(34rem, calc(100vw - 2rem));
+  height: 28rem;
+  box-sizing: border-box;
+  padding: 2rem 2.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 30px 80px -30px color-mix(in srgb, var(--ink) 45%, transparent);
+  animation: rise 0.5s var(--ease);
+  transition:
+    opacity 0.22s var(--ease),
+    transform 0.22s var(--ease);
+}
+
+.guide[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.guide::backdrop {
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fade 0.4s var(--ease);
+  transition: opacity 0.22s var(--ease);
+}
+
+.guide[data-leaving] {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+
+.guide[data-leaving]::backdrop {
+  opacity: 0;
+}
+
+.guide__step {
+  flex: 1;
+  min-height: 0;
+  animation: fade 0.35s var(--ease);
+}
+
+.guide__title {
+  margin: 0;
+  font: 400 2.5rem/1 var(--font-serif);
+  letter-spacing: -0.03em;
+}
+
+.guide__title em {
+  color: var(--muted);
+}
+
+.guide__body {
+  max-width: 28rem;
+  margin-top: 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+}
+
+.guide__body p {
+  margin: 0;
+}
+
+.guide__list {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.guide__show {
+  margin-top: 1.5rem;
+}
+
+.guide__show .round {
+  padding: 0;
+  border: 0;
+}
+
+.guide__dial {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 7rem;
+  aspect-ratio: 1;
+}
+
+.guide__ring {
+  position: absolute;
+  inset: 0;
+}
+
+.guide__dial span {
+  font: 300 1.5rem var(--font-sans);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.guide__tasks {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 20rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+
+.guide__tasks li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.guide__tasks li::before {
+  content: "";
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  box-sizing: border-box;
+  border: 1.5px solid var(--line-2);
+  border-radius: 50%;
+}
+
+.guide__tasks li[data-done] {
+  color: var(--caption);
+  text-decoration: line-through;
+  text-decoration-color: var(--mid);
+}
+
+.guide__tasks li[data-done]::before {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.guide__foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.guide__dots {
+  display: flex;
+  gap: 0.4375rem;
+  margin: 0 auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide__dots li {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--line-2);
+  transition: background 0.3s;
+}
+
+.guide__dots li[data-done] {
+  background: var(--mid);
+}
+
+.guide__dots li[data-now] {
+  background: var(--accent);
+}
+
+.guide__skip {
+  padding: 0.4375rem 0.5rem;
+  border: 0;
+  background: none;
+  color: var(--caption);
+  font: 500 0.75rem var(--font-sans);
+  transition: color 0.2s;
+}
+
+.guide__skip:hover {
+  color: var(--ink);
 }
 
 /* ---------- motion ------------------------------------------------------ */
@@ -1677,6 +2146,12 @@ button:disabled {
 @keyframes rise-row {
   from {
     transform: translateY(3rem);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
   }
 }
 
@@ -1695,6 +2170,43 @@ button:disabled {
 @keyframes drift {
   to {
     transform: translate3d(8%, -6%, 0) rotate(10deg) scale(1.1);
+  }
+}
+
+@keyframes edge-glow {
+  0% {
+    opacity: 0;
+  }
+  16%,
+  64% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ripple {
+  from {
+    outline-offset: 0;
+    opacity: 0.9;
+  }
+  to {
+    outline-offset: 110px;
+    opacity: 0;
+  }
+}
+
+@keyframes halo {
+  20% {
+    opacity: 1;
+  }
+  from,
+  to {
+    opacity: 0;
   }
 }
 

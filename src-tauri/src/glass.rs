@@ -38,8 +38,9 @@ pub fn main(app: &AppHandle, glass: bool) {
     let _ = (window, glass);
 }
 
-/// The mini timer is always glass: it has no other look.
-pub fn widget(window: &WebviewWindow) {
+/// The floating windows -- the mini timer, the end-of-phase card -- are always
+/// glass: they have no other look.
+pub fn float(window: &WebviewWindow) {
     #[cfg(target_os = "macos")]
     {
         use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
@@ -48,7 +49,8 @@ pub fn widget(window: &WebviewWindow) {
             window,
             NSVisualEffectMaterial::Popover,
             Some(NSVisualEffectState::Active),
-            Some(16.0),
+            // The same as the window's own corners (float.rs).
+            Some(14.0),
         );
     }
 

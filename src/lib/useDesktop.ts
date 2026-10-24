@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
+import { widgetBox, widgetIdleBox, widgetLook } from "../components/Widget";
 import { EVENTS, isDesktop, on, type Command, type Snapshot } from "./desktop";
 import type { Settings } from "./settings";
 import type { Timer } from "./useTimer";
@@ -21,6 +22,7 @@ export function useDesktop(timer: Timer, current: string | undefined, settings: 
     upNext: timer.upNext,
     current: current ?? null,
     palette: settings.palette,
+    look: widgetLook(settings),
   };
   const key = JSON.stringify(snapshot);
 
@@ -42,11 +44,13 @@ export function useDesktop(timer: Timer, current: string | undefined, settings: 
   useEffect(() => {
     if (!isDesktop) return;
     const offs = [
-      on<Command>(EVENTS.command, (command) =>
-        command === "skip" ? actions.current.skip() : actions.current.toggle(),
-      ),
+      on<Command>(EVENTS.command, (command) => {
+        if (command === "skip") actions.current.skip();
+        else if (command === "toggle" || !actions.current.running) actions.current.toggle();
+      }),
       on(EVENTS.due, () => actions.current.sync()),
       on(EVENTS.widgetReady, () => void emit(EVENTS.state, latest.current)),
+      on(EVENTS.alertReady, () => void emit(EVENTS.state, latest.current)),
     ];
     return () => offs.forEach((off) => off());
   }, []);
@@ -60,4 +64,28 @@ export function useDesktop(timer: Timer, current: string | undefined, settings: 
     if (!isDesktop) return;
     void invoke("set_open_at_login", { on: settings.openAtLogin });
   }, [settings.openAtLogin]);
+
+  // The card is made now, with the app starting, never at the end of a phase
+  // (src-tauri/src/alert.rs says why).
+  useEffect(() => {
+    if (isDesktop && settings.alert) void invoke("prepare_alert");
+  }, [settings.alert]);
+
+  // The same for the effect that comes with the sound.
+  useEffect(() => {
+    if (isDesktop && settings.effect !== "none") void invoke("prepare_effect");
+  }, [settings.effect]);
+
+  // The widget draws itself from the snapshot; its window is sized to match,
+  // and to the time alone while it shows only that.
+  const { width, height } = widgetBox(snapshot.look);
+  const idle = snapshot.look.peek ? widgetIdleBox(snapshot.look) : null;
+  const idleWidth = idle?.width;
+  const idleHeight = idle?.height;
+  const opacity = settings.widgetOpacity;
+  useEffect(() => {
+    if (!isDesktop) return;
+    const idle = idleWidth && idleHeight ? [idleWidth, idleHeight] : null;
+    void invoke("set_widget_look", { width, height, opacity, idle });
+  }, [width, height, opacity, idleWidth, idleHeight]);
 }
