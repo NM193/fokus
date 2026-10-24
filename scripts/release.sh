@@ -25,7 +25,8 @@
 #
 # The app is not signed by Apple, so the first open of the .dmg's app needs
 # System Settings -> Privacy & Security -> Open Anyway (right-click -> Open
-# before macOS 15). Updates after that install without asking.
+# before macOS 15). The release page also gives a Terminal line that installs
+# without that (see the body below). Updates after that install without asking.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -88,6 +89,33 @@ if [ -z "$dmg" ]; then
   exit 1
 fi
 
+# The release page: the notes, then how to install without macOS stopping the
+# first open. A browser download is quarantined, and an app Apple has not
+# notarised is refused until System Settings overrides it; curl sets no
+# quarantine, so nothing is asked. latest.json keeps the bare notes: the app
+# shows those in its update notice.
+install="https://github.com/$repo/releases/latest/download/$(basename "$archive")"
+body="$(cat <<EOF
+$notes
+
+## Install
+
+Paste this into Terminal (Fokus quit, if it is already installed):
+
+\`\`\`
+curl -fsSL $install | tar -xz -C /Applications && open /Applications/Fokus.app
+\`\`\`
+
+Installed that way, Fokus opens straight away. The .dmg below works too, but Fokus is not signed by Apple, so macOS stops its first open with "Fokus Not Opened". To let it through, paste this into Terminal once:
+
+\`\`\`
+xattr -dr com.apple.quarantine /Applications/Fokus.app
+\`\`\`
+
+or open System Settings → Privacy & Security → Open Anyway. Updates arrive inside the app after that.
+EOF
+)"
+
 echo "== release v$version"
 git add src-tauri/tauri.conf.json
 git commit -qm "Version $version" || true
@@ -99,10 +127,10 @@ git push -q -f origin "v$version"
 # again. The archive and its signature go up together.
 if gh release view "v$version" > /dev/null 2>&1; then
   echo "   v$version exists; replacing what it holds"
-  gh release edit "v$version" --title "Fokus $version" --notes "$notes" > /dev/null
+  gh release edit "v$version" --title "Fokus $version" --notes "$body" > /dev/null
   gh release upload "v$version" "$archive" "$archive.sig" "$dmg" --clobber
 else
-  gh release create "v$version" --title "Fokus $version" --notes "$notes" \
+  gh release create "v$version" --title "Fokus $version" --notes "$body" \
     "$archive" "$archive.sig" "$dmg"
 fi
 
