@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import { isDesktop } from "../lib/desktop";
+import { EVENTS, isDesktop, on } from "../lib/desktop";
 
 /** How often a new version is looked for after launch: Fokus lives in the menu bar and is rarely started again. */
 const EVERY_MS = 3 * 60 * 60 * 1000;
@@ -13,9 +14,10 @@ const STALE_MS = 60 * 60 * 1000;
  *
  * Asked about at launch, every few hours after, and when the window comes up
  * a while after the last look. Nothing is downloaded until you say so; Later
- * puts it away until the next look. Updating restarts the app; a running
- * timer survives that, since it is a deadline in storage rather than a
- * countdown in memory.
+ * puts it away until the next look. The menu bar menu offers it too, for a
+ * window that is never opened, and choosing it there installs it here.
+ * Updating restarts the app; a running timer survives that, since it is a
+ * deadline in storage rather than a countdown in memory.
  */
 export function UpdateNotice() {
   const [update, setUpdate] = useState<Update | null>(null);
@@ -66,11 +68,10 @@ export function UpdateNotice() {
     };
   }, []);
 
-  if (!update || later) return null;
-
   async function install() {
-    if (!update) return;
+    if (!update || installing.current) return;
     installing.current = true;
+    setLater(false);
     setPercent(0);
     setError(null);
     try {
@@ -90,6 +91,20 @@ export function UpdateNotice() {
       installing.current = false;
     }
   }
+
+  const version = update?.version ?? null;
+  useEffect(() => {
+    if (isDesktop) void invoke("set_update", { version });
+  }, [version]);
+
+  const installNow = useRef(install);
+  installNow.current = install;
+  useEffect(() => {
+    if (!isDesktop) return;
+    return on(EVENTS.update, () => void installNow.current());
+  }, []);
+
+  if (!update || later) return null;
 
   return (
     <div className="side__update">

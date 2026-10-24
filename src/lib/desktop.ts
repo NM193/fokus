@@ -37,6 +37,8 @@ export const EVENTS = {
   alertReady: "fokus://alert-ready",
   /** App → effect: draw this one, now. */
   effect: "fokus://effect",
+  /** Menu bar → main window: install the new version it offers. */
+  update: "fokus://update",
 } as const;
 
 /** "start" starts only what is not running: the card's button, pressed late, must not pause. */

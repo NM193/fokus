@@ -15,6 +15,12 @@ pub fn sync_timer(app: AppHandle, clock: State<'_, Clock>, state: TimerState) {
     }
 }
 
+/// A newer version the window found, for the menu bar menu to offer; none when there is not one.
+#[tauri::command]
+pub fn set_update(app: AppHandle, version: Option<String>) {
+    tray::set_update(&app, version);
+}
+
 #[tauri::command]
 pub fn ring(sound: String, volume: f64) {
     chime::play(&sound, volume);

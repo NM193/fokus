@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { isDesktop } from "../lib/desktop";
+import { NOTES } from "../lib/notes";
 import { flash } from "../lib/notify";
 import {
   EVERY_OPTIONS,
@@ -213,6 +214,24 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
       </div>
 
       <div className="section">
+        <h2>Session</h2>
+        <Setting
+          wide
+          title="When it is all done"
+          hint="A line under the score once every task is ticked off, a different one each session. One per line, kept on this Mac only. Left empty, Fokus says one of its own."
+        >
+          <textarea
+            className="notes"
+            aria-label="When it is all done"
+            rows={4}
+            value={settings.notes}
+            placeholder={NOTES.join("\n")}
+            onChange={(event) => update({ notes: event.target.value })}
+          />
+        </Setting>
+      </div>
+
+      <div className="section">
         <h2>Mini timer</h2>
         <Setting
           title="Size"
@@ -313,9 +332,20 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
   );
 }
 
-function Setting({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+/** `wide` puts the control under its words, for one too big to sit beside them. */
+function Setting({
+  title,
+  hint,
+  wide,
+  children,
+}: {
+  title: string;
+  hint: string;
+  wide?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="setting">
+    <div className={wide ? "setting setting--wide" : "setting"}>
       <div className="setting__text">
         <b>{title}</b>
         <span>{hint}</span>

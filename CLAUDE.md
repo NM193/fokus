@@ -27,6 +27,8 @@ frontend still runs in a plain browser tab; everything desktop-only checks
   skip, reset and finish via `markAt`, never per tick.
 - `src/lib/useSession.ts` tasks, focus time and rounds of the current session;
   `end()` writes a record to History and carries unfinished tasks over.
+- `src/lib/notes.ts` what the session says once every task in it is ticked
+  off: Fokus's own lines, or yours from Settings → Session.
 - `src/lib/settings.ts` lengths, palette, window surface, auto-start, chime.
 - `src/components/` `Sidebar` (nav pill taken from Tzz), `Dial` (ring and
   controls), `TaskList`, `HistoryView`, `SettingsView`, `Widget`,
@@ -79,6 +81,9 @@ The timer's logic stays in the main window's frontend. The app around it:
 - **Commands from the menu bar and the mini timer** arrive as
   `fokus://command` ("toggle" / "skip") and run through the same `timer`
   functions as the buttons.
+- **A new version** is found by the window (`UpdateNotice`) and offered in
+  the menu bar menu too (`set_update`): choosing it there opens the window
+  and installs it from there (`fokus://update`).
 - **Glass.** Both windows are always transparent and forced to the light
   appearance; Settings → Window picks glass (macOS vibrancy behind a pastel
   tint) or solid paper.

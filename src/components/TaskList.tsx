@@ -8,6 +8,7 @@ import {
   type PointerEvent,
 } from "react";
 import { duration } from "../lib/format";
+import { noteFor } from "../lib/notes";
 import type { SessionApi, Task } from "../lib/useSession";
 import { CheckIcon, CloseIcon, GripIcon, PencilIcon, PlusIcon } from "./Icons";
 
@@ -20,6 +21,8 @@ type Props = {
   onEnd: () => void;
   /** What the last ended session came to, shown once under the score. */
   summary: string | null;
+  /** Notes of your own for a session that is all done (Settings), one per line. */
+  notes: string;
 };
 
 /** A row held by its handle: where it was, and where it would land now. */
@@ -53,7 +56,7 @@ function shift(drag: Drag | null, index: number): number {
   return 0;
 }
 
-export function TaskList({ session, focusing, liveMs, onEnd, summary }: Props) {
+export function TaskList({ session, focusing, liveMs, onEnd, summary, notes }: Props) {
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
   const cancelled = useRef(false);
@@ -69,6 +72,7 @@ export function TaskList({ session, focusing, liveMs, onEnd, summary }: Props) {
   const nowId = focusing ? session.tasks.find((t) => !t.done)?.id : undefined;
   const focused = session.focusMs + liveMs;
   const canEnd = focused > 0 || session.done > 0;
+  const complete = session.total > 0 && session.done === session.total;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -285,6 +289,9 @@ export function TaskList({ session, focusing, liveMs, onEnd, summary }: Props) {
           {session.done} of {session.total} tasks · {duration(focused)} focused
           {session.rounds > 0 && ` · ${session.rounds} ${session.rounds === 1 ? "round" : "rounds"}`}
         </span>
+        <div className="score__note" data-shown={complete ? "" : undefined} aria-hidden={!complete}>
+          <p>{noteFor(session.startedAt, session.total, notes)}</p>
+        </div>
         {summary && <p className="notice">{summary}</p>}
       </div>
     </section>

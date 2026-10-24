@@ -19,6 +19,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_nspanel::init());
     builder
         .manage(clock::Clock::default())
+        .manage(tray::State::default())
         .manage(widget::State::default())
         .manage(alert::State::default())
         .manage(effect::State::default())
@@ -53,6 +54,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::sync_timer,
+            commands::set_update,
             commands::ring,
             commands::prepare_alert,
             commands::show_alert,

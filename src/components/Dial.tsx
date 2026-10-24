@@ -15,26 +15,41 @@ type Props = {
   update: (patch: Partial<Settings>) => void;
 };
 
-/** The timer: a ring that fills as the phase passes, and its three controls. */
+/**
+ * The timer: a ring that fills as the phase passes, and its three controls.
+ * A running break breathes (styles.css says how).
+ */
 export function Dial({ timer, settings, update }: Props) {
   const cta = timer.running ? "Pause" : timer.touched ? "Resume" : "Start";
   // The round in progress during focus; the rounds already done during a break.
   const shown = timer.phase === "focus" ? timer.round + 1 : timer.round || settings.every;
+  const breathing = timer.running && timer.phase !== "focus";
 
   return (
-    <section className={`dial dial--${timer.phase}`} data-running={timer.running ? "" : undefined}>
+    <section
+      className={`dial dial--${timer.phase}`}
+      data-running={timer.running ? "" : undefined}
+      data-breathing={breathing ? "" : undefined}
+    >
       <span className="eyebrow">
         Round {Math.min(shown, settings.every)} of {settings.every}
       </span>
 
       <div className="dial__face">
+        <i className="dial__breath" aria-hidden="true" />
         <Ring className="dial__ring" progress={timer.progress} />
         <div className="dial__read">
           <span className="dial__phase">{PHASE_NAME[timer.phase]}</span>
           <span className="dial__time" role="timer" aria-live="off">
             {clock(timer.remaining)}
           </span>
-          <span className="dial__next">Next · {PHASE_NAME[timer.upNext]}</span>
+          <span className="dial__foot">
+            <span className="dial__next">Next · {PHASE_NAME[timer.upNext]}</span>
+            <span className="dial__cue" aria-hidden="true">
+              <span>Breathe in</span>
+              <span>Breathe out</span>
+            </span>
+          </span>
         </div>
       </div>
 

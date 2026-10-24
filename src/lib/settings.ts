@@ -44,6 +44,8 @@ export type Settings = {
   widgetLine: boolean;
   widgetToggle: boolean;
   widgetSkip: boolean;
+  /** What the session says once every task is ticked off, one per line; empty for Fokus's own (notes.ts). */
+  notes: string;
 };
 
 export const FOCUS_OPTIONS = [15, 25, 30, 45, 60, 90];
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
   widgetLine: true,
   widgetToggle: true,
   widgetSkip: true,
+  notes: "",
 };
 
 const KEY = "fokus.settings.v1";

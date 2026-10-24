@@ -158,6 +158,7 @@ export default function App() {
                 liveMs={timer.accruing}
                 onEnd={endSession}
                 summary={summary}
+                notes={settings.notes}
               />
             </div>
           </>
