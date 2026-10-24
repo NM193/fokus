@@ -81,9 +81,11 @@ The timer's logic stays in the main window's frontend. The app around it:
 - **Commands from the menu bar and the mini timer** arrive as
   `fokus://command` ("toggle" / "skip") and run through the same `timer`
   functions as the buttons.
-- **A new version** is found by the window (`UpdateNotice`) and offered in
-  the menu bar menu too (`set_update`): choosing it there opens the window
-  and installs it from there (`fokus://update`).
+- **A new version** is found by the window (`src/lib/updater.ts`, one state
+  for every place that offers it): in the sidebar (`UpdateNotice`), in
+  Settings → Updates (with a Check for updates button) and in the menu bar
+  menu (`set_update`); choosing it there opens the window and installs it
+  from there (`fokus://update`).
 - **Glass.** Both windows are always transparent and forced to the light
   appearance; Settings → Window picks glass (macOS vibrancy behind a pastel
   tint) or solid paper.
@@ -170,7 +172,7 @@ pastel key. The rules that carry it:
 - `cd src-tauri && cargo test` -- the menu bar clock's text
 - `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
   GitHub Release and the `latest.json` installed copies check at launch, every
-  three hours and when the window comes up after an hour (`UpdateNotice`).
+  three hours and when the window comes up after an hour (`src/lib/updater.ts`).
   Copies before 0.3.1 check only at launch: they see a new version after
   Fokus is quit and opened again. Signed with `~/.tauri/fokus.key` (Tauri's
   update key, not Apple's: the app is not notarised, so the first open needs System Settings ->

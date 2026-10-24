@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { isDesktop } from "../lib/desktop";
+import { timeLabel } from "../lib/format";
 import { NOTES } from "../lib/notes";
 import { flash } from "../lib/notify";
 import {
@@ -22,7 +24,9 @@ import {
   type WidgetSize,
 } from "../lib/settings";
 import { chime } from "../lib/sound";
+import { install, look, useUpdater } from "../lib/updater";
 import { Round } from "./Round";
+import { UpdateProgress } from "./UpdateNotice";
 
 type Props = {
   settings: Settings;
@@ -308,6 +312,13 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         </div>
       )}
 
+      {isDesktop && (
+        <div className="section">
+          <h2>Updates</h2>
+          <Version />
+        </div>
+      )}
+
       <div className="section">
         <h2>Help</h2>
         <Setting title="Guide" hint="The short tour from the first time Fokus opened.">
@@ -352,6 +363,41 @@ function Setting({
       </div>
       <div className="setting__control">{children}</div>
     </div>
+  );
+}
+
+/** This version, and a newer one when there is: looked for here on request, besides the looks Fokus makes by itself. */
+function Version() {
+  const { update, looking, lookedAt, failed, percent, error } = useUpdater();
+  const [current, setCurrent] = useState<string | null>(null);
+  useEffect(() => {
+    void getVersion().then(setCurrent);
+  }, []);
+
+  const now = current ? `Fokus ${current}` : "Fokus";
+  let hint = `${now}. It also looks for a new version by itself every few hours.`;
+  if (update && percent !== null) hint = `Downloading Fokus ${update.version}. Fokus opens again once it is in.`;
+  else if (update && error) hint = `Fokus ${update.version} did not go through: ${error}`;
+  else if (update) hint = `${now} now. Fokus ${update.version} is out.`;
+  else if (failed) hint = `${now}. GitHub could not be reached; try again in a while.`;
+  else if (lookedAt) hint = `${now}, the newest. Checked at ${timeLabel(lookedAt)}.`;
+
+  return (
+    <Setting title="Version" hint={hint}>
+      {update && percent !== null ? (
+        <span className="setting__meter">
+          <UpdateProgress percent={percent} />
+        </span>
+      ) : update ? (
+        <button type="button" className="cta cta--small" onClick={() => void install()}>
+          Install {update.version}
+        </button>
+      ) : (
+        <button type="button" className="ghost ghost--small" disabled={looking} onClick={() => void look()}>
+          {looking ? "Checking…" : "Check for updates"}
+        </button>
+      )}
+    </Setting>
   );
 }
 
