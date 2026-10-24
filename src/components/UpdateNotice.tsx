@@ -1,33 +1,76 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { isDesktop } from "../lib/desktop";
 
+/** How often a new version is looked for after launch: Fokus lives in the menu bar and is rarely started again. */
+const EVERY_MS = 3 * 60 * 60 * 1000;
+/** Bringing the window up looks again, when the last look is older than this. */
+const STALE_MS = 60 * 60 * 1000;
+
 /**
  * A new version, from the GitHub release scripts/release.sh made.
  *
- * Asked about once, at launch, and nothing is downloaded until you say so.
- * Updating restarts the app; a running timer survives that, since it is a
- * deadline in storage rather than a countdown in memory.
+ * Asked about at launch, every few hours after, and when the window comes up
+ * a while after the last look. Nothing is downloaded until you say so; Later
+ * puts it away until the next look. Updating restarts the app; a running
+ * timer survives that, since it is a deadline in storage rather than a
+ * countdown in memory.
  */
 export function UpdateNotice() {
   const [update, setUpdate] = useState<Update | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [later, setLater] = useState(false);
+  // One look at a time.
+  const looking = useRef(false);
+  // No look while an update downloads: it would swap the update out from under it.
+  const installing = useRef(false);
+  // Every look hands back a new handle, even for the same version: the old one is let go.
+  const shown = useRef<Update | null>(null);
 
   useEffect(() => {
     if (!isDesktop) return;
-    check()
-      .then((found) => found && setUpdate(found))
-      // No network, or no release yet: nothing worth saying.
-      .catch(() => {});
+    let last = 0;
+    function look() {
+      if (looking.current || installing.current) return;
+      looking.current = true;
+      last = Date.now();
+      check()
+        .then((found) => {
+          if (!found) return;
+          if (installing.current) {
+            void found.close().catch(() => {});
+            return;
+          }
+          if (shown.current) void shown.current.close().catch(() => {});
+          shown.current = found;
+          setUpdate(found);
+          setLater(false);
+        })
+        // No network, or no release yet: nothing worth saying.
+        .catch(() => {})
+        .finally(() => {
+          looking.current = false;
+        });
+    }
+    function onFocus() {
+      if (Date.now() - last > STALE_MS) look();
+    }
+    look();
+    const id = window.setInterval(look, EVERY_MS);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   if (!update || later) return null;
 
   async function install() {
     if (!update) return;
+    installing.current = true;
     setPercent(0);
     setError(null);
     try {
@@ -44,6 +87,7 @@ export function UpdateNotice() {
     } catch (caught) {
       setError(String(caught));
       setPercent(null);
+      installing.current = false;
     }
   }
 

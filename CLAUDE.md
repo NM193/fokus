@@ -164,9 +164,11 @@ pastel key. The rules that carry it:
   installed by copying it over `/Applications/Fokus.app` (quit the running one first)
 - `cd src-tauri && cargo test` -- the menu bar clock's text
 - `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
-  GitHub Release and the `latest.json` installed copies check at launch
-  (`UpdateNotice`). Signed with `~/.tauri/fokus.key` (Tauri's update key, not
-  Apple's: the app is not notarised, so the first open needs System Settings ->
+  GitHub Release and the `latest.json` installed copies check at launch, every
+  three hours and when the window comes up after an hour (`UpdateNotice`).
+  Copies before 0.3.1 check only at launch: they see a new version after
+  Fokus is quit and opened again. Signed with `~/.tauri/fokus.key` (Tauri's
+  update key, not Apple's: the app is not notarised, so the first open needs System Settings ->
   Privacy & Security -> Open Anyway; right-click -> Open before macOS 15).
   The release page also gives a Terminal line (`curl … | tar -xz -C
   /Applications`) that installs with no quarantine, so nothing is asked
