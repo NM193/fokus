@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Permissions for the main window, the mini timer, the end-of-phase card and its effect",
   "windows": ["main", "widget", "alert", "effect"],
+  "platforms": ["macOS", "windows", "linux"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

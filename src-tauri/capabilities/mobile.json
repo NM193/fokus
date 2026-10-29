@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Permissions for the phone app: its one window and the notification at the end of a phase",
+  "windows": ["main"],
+  "platforms": ["iOS", "android"],
+  "permissions": ["core:default", "notification:default"]
+}

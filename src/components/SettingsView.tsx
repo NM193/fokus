@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { isDesktop } from "../lib/desktop";
+import { isDesktop, isPhone } from "../lib/desktop";
 import { timeLabel } from "../lib/format";
 import { NOTES } from "../lib/notes";
 import { flash } from "../lib/notify";
@@ -168,7 +168,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
           </Setting>
         )}
         {settings.sound && (
-          <Setting title="Volume" hint="On top of the Mac's own volume.">
+          <Setting title="Volume" hint={`On top of the ${isPhone ? "phone" : "Mac"}'s own volume.`}>
             <span className="volume">
               <input
                 type="range"
@@ -210,8 +210,15 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
             <Switch label="Card on screen" on={settings.alert} onChange={(alert) => update({ alert })} />
           </Setting>
         )}
-        {isDesktop && (
-          <Setting title="Notification" hint="A note on screen when a phase ends, unless Fokus is already in front.">
+        {(isDesktop || isPhone) && (
+          <Setting
+            title="Notification"
+            hint={
+              isPhone
+                ? "A note when a phase ends, with the sound, even with the phone locked."
+                : "A note on screen when a phase ends, unless Fokus is already in front."
+            }
+          >
             <Switch label="Notification" on={settings.notify} onChange={(notify) => update({ notify })} />
           </Setting>
         )}
@@ -222,7 +229,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         <Setting
           wide
           title="When it is all done"
-          hint="A line under the score once every task is ticked off, a different one each session. One per line, kept on this Mac only. Left empty, Fokus says one of its own."
+          hint={`A line under the score once every task is ticked off, a different one each session. One per line, kept on this ${isPhone ? "phone" : "Mac"} only. Left empty, Fokus says one of its own.`}
         >
           <textarea
             className="notes"
@@ -235,64 +242,67 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         </Setting>
       </div>
 
-      <div className="section">
-        <h2>Mini timer</h2>
-        <Setting
-          title="Size"
-          hint={
-            isDesktop
-              ? "It floats over every app, full screen ones too, so keep it as small as you like."
-              : "How much room it takes over other windows."
-          }
-        >
-          <Segmented<WidgetSize>
-            label="Size"
-            value={settings.widgetSize}
-            options={[
-              { value: "small", label: "Small" },
-              { value: "medium", label: "Medium" },
-              { value: "large", label: "Large" },
-            ]}
-            onChange={(widgetSize) => update({ widgetSize })}
-          />
-        </Setting>
-        {isDesktop && (
-          <Setting title="Opacity" hint="Lower lets what is behind it show through.">
-            <Segmented
-              label="Opacity"
-              value={settings.widgetOpacity}
-              options={OPACITY_OPTIONS.map((v) => ({ value: v, label: `${Math.round(v * 100)}%` }))}
-              onChange={(widgetOpacity) => update({ widgetOpacity })}
+      {/* A phone has no window to float over: the mini timer is for a desktop. */}
+      {!isPhone && (
+        <div className="section">
+          <h2>Mini timer</h2>
+          <Setting
+            title="Size"
+            hint={
+              isDesktop
+                ? "It floats over every app, full screen ones too, so keep it as small as you like."
+                : "How much room it takes over other windows."
+            }
+          >
+            <Segmented<WidgetSize>
+              label="Size"
+              value={settings.widgetSize}
+              options={[
+                { value: "small", label: "Small" },
+                { value: "medium", label: "Medium" },
+                { value: "large", label: "Large" },
+              ]}
+              onChange={(widgetSize) => update({ widgetSize })}
             />
           </Setting>
-        )}
-        <Setting title="Only the time" hint="The rest shows when the pointer is over it.">
-          <Switch label="Only the time" on={settings.widgetPeek} onChange={(widgetPeek) => update({ widgetPeek })} />
-        </Setting>
-        <Setting title="Phase" hint="Focus, short break or long break, over the time.">
-          <Switch label="Phase" on={settings.widgetPhase} onChange={(widgetPhase) => update({ widgetPhase })} />
-        </Setting>
-        <Setting title="Task" hint="The task you are on, or what comes next, under the time.">
-          <Switch label="Task" on={settings.widgetLine} onChange={(widgetLine) => update({ widgetLine })} />
-        </Setting>
-        <Setting
-          title="Start and pause"
-          hint={
-            isDesktop
-              ? "The button in the ring that fills as a phase passes. Without it, ⌃⌥F still starts and pauses."
-              : "The button in the ring that fills as a phase passes."
-          }
-        >
-          <Switch
-            label="Start and pause"
-            on={settings.widgetToggle}
-            onChange={(widgetToggle) => update({ widgetToggle })}
-          />
-        </Setting>
-        <Setting title="Skip" hint="Straight on to the next phase.">
-          <Switch label="Skip" on={settings.widgetSkip} onChange={(widgetSkip) => update({ widgetSkip })} />
-        </Setting>
-      </div>
+          {isDesktop && (
+            <Setting title="Opacity" hint="Lower lets what is behind it show through.">
+              <Segmented
+                label="Opacity"
+                value={settings.widgetOpacity}
+                options={OPACITY_OPTIONS.map((v) => ({ value: v, label: `${Math.round(v * 100)}%` }))}
+                onChange={(widgetOpacity) => update({ widgetOpacity })}
+              />
+            </Setting>
+          )}
+          <Setting title="Only the time" hint="The rest shows when the pointer is over it.">
+            <Switch label="Only the time" on={settings.widgetPeek} onChange={(widgetPeek) => update({ widgetPeek })} />
+          </Setting>
+          <Setting title="Phase" hint="Focus, short break or long break, over the time.">
+            <Switch label="Phase" on={settings.widgetPhase} onChange={(widgetPhase) => update({ widgetPhase })} />
+          </Setting>
+          <Setting title="Task" hint="The task you are on, or what comes next, under the time.">
+            <Switch label="Task" on={settings.widgetLine} onChange={(widgetLine) => update({ widgetLine })} />
+          </Setting>
+          <Setting
+            title="Start and pause"
+            hint={
+              isDesktop
+                ? "The button in the ring that fills as a phase passes. Without it, ⌃⌥F still starts and pauses."
+                : "The button in the ring that fills as a phase passes."
+            }
+          >
+            <Switch
+              label="Start and pause"
+              on={settings.widgetToggle}
+              onChange={(widgetToggle) => update({ widgetToggle })}
+            />
+          </Setting>
+          <Setting title="Skip" hint="Straight on to the next phase.">
+            <Switch label="Skip" on={settings.widgetSkip} onChange={(widgetSkip) => update({ widgetSkip })} />
+          </Setting>
+        </div>
+      )}
 
       {isDesktop && (
         <div className="section">
@@ -332,7 +342,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         <h2>Data</h2>
         <Setting
           title="History"
-          hint={`${historyCount} ${historyCount === 1 ? "session" : "sessions"} kept on this Mac.`}
+          hint={`${historyCount} ${historyCount === 1 ? "session" : "sessions"} kept on this ${isPhone ? "phone" : "Mac"}.`}
         >
           <ConfirmButton disabled={historyCount === 0} onConfirm={onClearHistory}>
             Clear history

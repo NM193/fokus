@@ -12,6 +12,7 @@ import { clock, duration } from "./lib/format";
 import { card, flash, phaseEnded, tell } from "./lib/notify";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
 import { useDesktop } from "./lib/useDesktop";
+import { usePhone } from "./lib/usePhone";
 import { useSession } from "./lib/useSession";
 import { PHASE_NAME, phaseLength, useTimer, type Timer } from "./lib/useTimer";
 import { useWidget } from "./lib/useWidget";
@@ -73,6 +74,7 @@ export default function App() {
   }, [settings.surface]);
 
   useDesktop(timer, current, settings);
+  usePhone(timer, current, settings);
 
   // The time shows in the window title and the Dock's window menu while it runs.
   useEffect(() => {
@@ -109,6 +111,7 @@ export default function App() {
   }
 
   const [lead, rest] = TITLES[timer.phase];
+  const now = status(timer, current);
 
   return (
     <div className="app">
@@ -118,7 +121,7 @@ export default function App() {
       <Sidebar
         view={view}
         onNavigate={setView}
-        status={status(timer, current)}
+        status={now}
         widget={{ supported: widget.supported, open: widget.open, onToggle: widget.toggle }}
       />
 
@@ -138,6 +141,12 @@ export default function App() {
           />,
           widget.window.document.body,
         )}
+
+      {/* On a phone the sidebar is the bar along the bottom; this says what its status says. */}
+      <header className="topline">
+        <b>Fokus</b>
+        <span className={`topline__status topline__status--${now.tone}`}>{now.title}</span>
+      </header>
 
       <main className="stage" key={view}>
         {view === "focus" && (

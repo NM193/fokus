@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { isDesktop } from "../lib/desktop";
+import { isDesktop, isPhone } from "../lib/desktop";
 import { clock } from "../lib/format";
 import { flash } from "../lib/notify";
 import type { Settings } from "../lib/settings";
@@ -189,7 +189,9 @@ function guideSteps(settings: Settings, tryIt: () => void): Step[] {
       <p>
         {isDesktop
           ? "A sound, a soft glow and a card that waits until you answer it. Choose the sound, the effect and the card in Settings."
-          : "A soft chime. Turn it off, or set how loud it is, in Settings."}
+          : isPhone
+            ? "A note and a soft chime, even with the phone locked. Turn either off in Settings."
+            : "A soft chime. Turn it off, or set how loud it is, in Settings."}
       </p>
     ),
     show: (

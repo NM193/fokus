@@ -4,11 +4,24 @@ import type { WidgetLook } from "../components/Widget";
 import type { Palette } from "./settings";
 import type { Phase } from "./useTimer";
 
+/** Running inside Fokus's own app (Tauri), on the Mac or on a phone, rather than a browser tab. */
+const isApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
 /**
- * Running inside the Mac app (Tauri) rather than a browser tab. Everything
- * desktop-only checks this, so the same frontend still runs in a browser.
+ * Running inside the phone app (Tauri on iOS or Android). An iPad's web view
+ * says it is a Mac, but a Mac has no touch points.
  */
-export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const isPhone =
+  isApp &&
+  (/Android|iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
+
+/**
+ * Running inside the Mac app rather than a browser tab or the phone app.
+ * Everything desktop-only checks this, so the same frontend still runs in a
+ * browser, and on a phone as a browser would plus what usePhone adds.
+ */
+export const isDesktop = isApp && !isPhone;
 
 /** This web view is the mini timer's window, not the app's (src-tauri/src/widget.rs). */
 export const isWidgetWindow = isDesktop && getCurrentWindow().label === "widget";

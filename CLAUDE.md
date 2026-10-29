@@ -11,6 +11,9 @@ frontend still runs in a plain browser tab; everything desktop-only checks
 `isDesktop` (`src/lib/desktop.ts`). The repo is public
 (github.com/NM193/fokus): the app updates itself from its GitHub Releases.
 
+On its way to phones (Android, then iPhone), on the `mobile` branch: the same
+frontend in Tauri's mobile shell. See "The phone app" below.
+
 ## Tech stack
 - React 18 + TypeScript + Vite; Tauri v2 (Rust) for the Mac app.
 - State lives in `localStorage` (`src/lib/store.ts`), one versioned key per
@@ -30,6 +33,7 @@ frontend still runs in a plain browser tab; everything desktop-only checks
 - `src/lib/notes.ts` what the session says once every task in it is ticked
   off: Fokus's own lines, or yours from Settings → Session.
 - `src/lib/settings.ts` lengths, palette, window surface, auto-start, chime.
+- `src/lib/usePhone.ts` the phone app's notification at the end of a phase.
 - `src/components/` `Sidebar` (nav pill taken from Tzz), `Dial` (ring and
   controls), `TaskList`, `HistoryView`, `SettingsView`, `Widget`,
   `WidgetWindow`, `AlertWindow` (the end-of-phase card), `EffectWindow`,
@@ -97,6 +101,28 @@ The timer's logic stays in the main window's frontend. The app around it:
 - **⌃⌥F starts and pauses from any app** (`shortcut.rs`). Registered after
   the plugin, so a shortcut already taken elsewhere means no shortcut rather
   than an app that will not start.
+
+## The phone app
+Tauri v2 on iOS and Android, the same React app. `isPhone` (desktop.ts) is
+the phone app; `isDesktop` is now the Mac app only, so on a phone the
+frontend behaves as in a browser, plus `usePhone`.
+
+- **One column under 40rem** (styles.css, "phone"): the sidebar becomes the
+  bar along the bottom (its nav only; Sidebar places the pill across or
+  down), `.topline` carries the brand and the status, the lede goes. The
+  same CSS serves a phone's browser.
+- **The end of a phase is booked with the phone** the moment it starts
+  (`usePhone`, one notification, id 1), and taken back on pause, reset or
+  skip. A locked phone stops the web view, so only the phone can ring then.
+  It shows in front too, so the app does not also chime (`phoneRings`).
+  Its sound is `chime.wav`, which still has to be bundled with each app.
+- **Rust:** everything in `src-tauri/src` but the notification plugin is
+  `#[cfg(desktop)]`; the desktop crates are target-gated in Cargo.toml.
+  `capabilities/mobile.json` is the phone's; `default.json` is desktop only.
+  `tauri.ios.conf.json` / `tauri.android.conf.json` give a plain, visible
+  window (the Mac's starts hidden and see-through).
+- Not yet: auto-start while the phone is locked (the next phase starts when
+  the app is opened again), sync with the Mac.
 
 ## Mini timer (widget)
 A small always-on-top window with the time, phase, current task, start/pause

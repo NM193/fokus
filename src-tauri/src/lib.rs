@@ -1,19 +1,46 @@
+// Everything here but the notifications is the Mac's (and later a desktop's):
+// on a phone Fokus is its web view and the phone's notifications
+// (src/lib/usePhone.ts).
+#[cfg(desktop)]
 mod alert;
+#[cfg(desktop)]
 mod chime;
+#[cfg(desktop)]
 mod clock;
+#[cfg(desktop)]
 mod commands;
+#[cfg(desktop)]
 mod effect;
+#[cfg(desktop)]
 mod float;
+#[cfg(desktop)]
 mod glass;
+#[cfg(desktop)]
 mod login;
+#[cfg(desktop)]
 mod shortcut;
+#[cfg(desktop)]
 mod tray;
+#[cfg(desktop)]
 mod widget;
 
+#[cfg(desktop)]
 use tauri::{Emitter, Manager, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(mobile)]
+    tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .run(tauri::generate_context!())
+        .expect("failed to start the app");
+
+    #[cfg(desktop)]
+    desktop();
+}
+
+#[cfg(desktop)]
+fn desktop() {
     let builder = tauri::Builder::default();
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());

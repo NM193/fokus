@@ -62,25 +62,46 @@ export function Sidebar({ view, onNavigate, status, widget }: Props) {
     const dark = copy.current;
     if (!box || !light || !dark) return;
 
-    const button = box.querySelector<HTMLElement>(`[data-nav="${view}"]`);
-    if (!button) return;
+    // Down the sidebar, or across the bar a phone has along the bottom.
+    function place(instant: boolean) {
+      const button = box!.querySelector<HTMLElement>(`[data-nav="${view}"]`);
+      if (!button || !light || !dark) return;
+      const at = button.getBoundingClientRect();
+      const from = box!.getBoundingClientRect();
+      const x = at.left - from.left;
+      const y = at.top - from.top;
+      if (instant) {
+        light.style.transition = "none";
+        dark.style.transition = "none";
+      }
+      light.style.transform = `translate(${x}px, ${y}px)`;
+      light.style.width = `${button.offsetWidth}px`;
+      light.style.height = `${button.offsetHeight}px`;
+      dark.style.transform = `translate(${-x}px, ${-y}px)`;
+      dark.style.width = `${box!.offsetWidth}px`;
+      if (instant) {
+        void light.offsetHeight;
+        light.style.transition = "";
+        dark.style.transition = "";
+      }
+    }
 
-    const y = button.getBoundingClientRect().top - box.getBoundingClientRect().top;
     // The first placement must not slide in from the top of the list.
-    const instant = !placed.current;
-    if (instant) {
-      light.style.transition = "none";
-      dark.style.transition = "none";
-    }
-    light.style.transform = `translateY(${y}px)`;
-    light.style.height = `${button.offsetHeight}px`;
-    dark.style.transform = `translateY(${-y}px)`;
-    if (instant) {
-      void light.offsetHeight;
-      light.style.transition = "";
-      dark.style.transition = "";
-    }
+    place(!placed.current);
     placed.current = true;
+
+    // A window resized across the phone's width turns the list on its side.
+    // Only a real change of size: the observer also reports once on its own,
+    // which would cut short the slide this view change just began.
+    let size = `${box.offsetWidth}x${box.offsetHeight}`;
+    const watch = new ResizeObserver(() => {
+      const now = `${box.offsetWidth}x${box.offsetHeight}`;
+      if (now === size) return;
+      size = now;
+      place(true);
+    });
+    watch.observe(box);
+    return () => watch.disconnect();
   }, [view]);
 
   return (
