@@ -1,10 +1,13 @@
 import { useEffect, useRef } from "react";
 import {
   cancel,
+  createChannel,
+  Importance,
   isPermissionGranted,
   requestPermission,
   Schedule,
   sendNotification,
+  Visibility,
 } from "@tauri-apps/plugin-notification";
 import { isPhone } from "./desktop";
 import { phaseEnded } from "./notify";
@@ -22,8 +25,41 @@ import { phaseLength, type Timer } from "./useTimer";
 
 /** One notification at a time: the end of the running phase. */
 const ID = 1;
-/** Fokus's chime once it is bundled with the app; till then, the phone's own sound. */
+/** Fokus's chime, bundled with the app (Android: res/raw, made by scripts/make-assets.py). */
 const SOUND = "chime.wav";
+
+/**
+ * Android rings what a notification's channel says, not the notification,
+ * and a channel's sound is fixed once it is made: so one channel with the
+ * chime and one without, picked by Settings → Sound.
+ */
+const android = isPhone && /Android/.test(navigator.userAgent);
+const CHIME = "fokus-chime";
+const QUIET = "fokus-quiet";
+let channels: Promise<unknown> | null = null;
+
+/** Made once per launch; making one that is there already changes nothing. */
+function makeChannels() {
+  channels ??= Promise.all([
+    createChannel({
+      id: CHIME,
+      name: "End of a phase",
+      description: "Fokus's chime when a focus block or a break is over.",
+      importance: Importance.High,
+      visibility: Visibility.Public,
+      sound: SOUND,
+      vibration: true,
+    }),
+    createChannel({
+      id: QUIET,
+      name: "End of a phase, quietly",
+      description: "The same note with Sound turned off in Settings.",
+      importance: Importance.Low,
+      visibility: Visibility.Public,
+    }),
+  ]).catch(() => {});
+  return channels;
+}
 
 /** Whether the phone lets Fokus notify, as of the last time it was asked. */
 let granted = false;
@@ -64,7 +100,22 @@ export function usePhone(timer: Timer, current: string | undefined, settings: Se
         // and taking it back could beat it to the punch.
         if (was !== null && was > Date.now() + 1000) await cancel([ID]);
         if (at === null || at <= Date.now() || !(await allowed())) return;
-        sendNotification({ id: ID, title, body, sound, schedule: Schedule.at(new Date(at), false, true) });
+        if (android) await makeChannels();
+        sendNotification({
+          id: ID,
+          title,
+          body,
+          sound,
+          schedule: Schedule.at(new Date(at), false, true),
+          ...(android && {
+            channelId: sound ? CHIME : QUIET,
+            // The ring in the status bar (res/drawable), in the lavender accent.
+            icon: "ic_stat_fokus",
+            iconColor: "#8C7AA9",
+            // A booked one comes back as an empty list when opened, without it.
+            largeBody: body,
+          }),
+        });
       } catch {
         // A courtesy, like the Mac's: never in the way of the timer.
       }

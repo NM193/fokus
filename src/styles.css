@@ -2282,6 +2282,12 @@ button:disabled {
   display: none;
 }
 
+/* Where the phone's own bars end; the Android app sets these (src/lib/insets.ts). */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @media (max-width: 40rem) {
   .app {
     display: block;
@@ -2304,7 +2310,7 @@ button:disabled {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    padding: calc(env(safe-area-inset-top) + 0.75rem) 1.375rem 0.625rem;
+    padding: calc(var(--safe-top) + 0.75rem) 1.375rem 0.625rem;
   }
 
   .topline b {
@@ -2342,12 +2348,12 @@ button:disabled {
 
   .stage {
     height: 100%;
-    padding: calc(env(safe-area-inset-top) + 3.75rem) 1.375rem calc(env(safe-area-inset-bottom) + 6rem);
+    padding: calc(var(--safe-top) + 3.75rem) 1.375rem calc(var(--safe-bottom) + 6rem);
   }
 
   .side {
     bottom: 0;
-    padding: 0.5rem 0.875rem calc(env(safe-area-inset-bottom) + 0.5rem);
+    padding: 0.5rem 0.875rem calc(var(--safe-bottom) + 0.5rem);
     border-right: 0;
     border-top: 1px solid var(--line);
   }
@@ -2472,6 +2478,12 @@ button:disabled {
 @media (hover: none) {
   .task__action {
     opacity: 1;
+  }
+
+  /* A tap leaves :hover behind on a touch screen; Start and Pause keep their fill. */
+  .cta:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--bg);
   }
 }
 

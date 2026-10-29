@@ -11,6 +11,7 @@ supersampling.
 """
 
 import math
+import shutil
 import struct
 import wave
 import zlib
@@ -19,6 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ICONS = ROOT / "src-tauri" / "icons"
 SOUNDS = ROOT / "src-tauri" / "sounds"
+# Android plays a notification's sound from the app's raw resources.
+ANDROID_RAW = ROOT / "src-tauri" / "gen" / "android" / "app" / "src" / "main" / "res" / "raw"
 
 CREAM = (0xFB, 0xF8, 0xF4)
 LAVENDER_SOFT = (0xEC, 0xE3, 0xF3)
@@ -154,6 +157,9 @@ def chime(rate: int = 44100) -> None:
         out.setsampwidth(2)
         out.setframerate(rate)
         out.writeframes(bytes(frames))
+    if ANDROID_RAW.parent.exists():
+        ANDROID_RAW.mkdir(exist_ok=True)
+        shutil.copyfile(SOUNDS / "chime.wav", ANDROID_RAW / "chime.wav")
 
 
 if __name__ == "__main__":
