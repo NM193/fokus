@@ -159,6 +159,11 @@ console: sign-up from the app is off) and its data in Firestore under
 once per device. localStorage stays the truth on each device; the cloud
 carries changes between them, live.
 
+Off for now: `PROJECT` in cloud.ts is empty, so no build has the Sync
+section or loads Firebase. Turning it on is that config (the Firebase
+project "Focus", `focus-4e785`, web app "Fokus") plus a Firestore database
+and the rules in its console.
+
 - **What travels:** the session (`state/session`), History (`history/{id}`,
   a record per document) and the timer's settings (`state/settings`: the
   lengths, the round, auto-start, palette, the notes; `SHARED` in
