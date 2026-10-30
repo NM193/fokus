@@ -115,19 +115,28 @@ frontend behaves as in a browser, plus `usePhone`.
   (`usePhone`, one notification, id 1), and taken back on pause, reset or
   skip. A locked phone stops the web view, so only the phone can ring then.
   It shows in front too, so the app does not also chime (`phoneRings`).
-  Its sound is `chime.wav`: on Android in `res/raw` (make-assets.py copies
-  it there), still to be bundled on iOS. Android plays the sound of the
+  Its sound is `chime.wav`, copied by make-assets.py into Android's
+  `res/raw` and the iOS app (`gen/apple/fokus_iOS/`). Android plays the sound of the
   notification's channel, fixed when the channel is made, so there are two:
   `fokus-chime` and `fokus-quiet` (Settings → Sound off).
 - **Android** is `src-tauri/gen/android`, made by `tauri android init` and
   kept in git: the manifest adds exact alarms (else a phase ends minutes
   late), `res/raw/chime.wav`, `res/drawable/ic_stat_fokus.xml` (the ring
-  in the status bar), and the icons from `npx tauri icon` (which also
-  rewrites the Mac's `icon.icns` and adds Windows and iOS sizes: put those
-  back). The page is drawn under the status and gesture bars; the web view's
+  in the status bar), and the launcher icons. The page is drawn under the status and gesture bars; the web view's
   env(safe-area-inset-*) misses the gesture bar, so `MainActivity.kt` hands
   the insets to the page (`src/lib/insets.ts` → `--safe-top`/`--safe-bottom`).
-- **Signing:** a release is signed with `~/.tauri/fokus-android.jks`
+- **iOS** is `src-tauri/gen/apple`, made by `tauri ios init` (needs
+  CocoaPods and xcodegen) and kept in git; `project.yml` is its source.
+  The notification plugin's iOS side reads the end time it is sent as the
+  phone's local time (2.7, no time zone on its date formatter), so
+  `usePhone` sends iOS the local time written as UTC (`when`); without it
+  every booking east of Greenwich is in the past and silently refused.
+- **The phones' icon** is `icons/phone-icon.png` (make-assets.py: the
+  tile's colours to the edges, the ring inside Android's safe zone).
+  `npx tauri icon src-tauri/icons/phone-icon.png` makes the Android and iOS
+  sizes, and also rewrites the Mac's icons and adds Windows sizes: put
+  `src-tauri/icons` back with git and delete the extras.
+- **Signing (Android):** a release is signed with `~/.tauri/fokus-android.jks`
   (`gen/android/keystore.properties`, not in git). Every version must carry
   that key, or the phone will not update in place, and removing the app
   takes its data with it: keep the key.
@@ -218,6 +227,11 @@ pastel key. The rules that carry it:
   `src-tauri/gen/android/app/build/outputs/apk/universal/release/`;
   `--debug --target aarch64` for the emulator (`emulator -avd s22 -no-window`, then
   `adb install -r`). A debug build's web view can be driven from Playwright's `_android`.
+- iPhone: `npx tauri ios build --debug --target aarch64-sim` -- `src-tauri/gen/apple/build/arm64-sim/Fokus.app`
+  for a simulator (`xcrun simctl boot`, `install`, `launch`: no window). A UI-test
+  target in a scratch Xcode project (`XCUIApplication(bundleIdentifier:)`) can tap
+  the page and the system's alerts. For her iPhone: a free Apple ID's team
+  (`APPLE_DEVELOPMENT_TEAM`, not in the repo); such an install runs 7 days.
 - `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
   GitHub Release and the `latest.json` installed copies check at launch, every
   three hours and when the window comes up after an hour (`src/lib/updater.ts`).

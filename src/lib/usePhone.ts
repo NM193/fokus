@@ -38,6 +38,16 @@ const CHIME = "fokus-chime";
 const QUIET = "fokus-quiet";
 let channels: Promise<unknown> | null = null;
 
+/**
+ * iOS reads the moment it is given ("…Z", UTC) as the phone's own clock time
+ * (tauri-plugin-notification 2.7, Notification.swift: no time zone on its
+ * date formatter), so east of Greenwich it lands in the past and is refused.
+ * So iOS is handed the phone's clock time written as if it were UTC.
+ */
+function when(at: number): Date {
+  return android ? new Date(at) : new Date(at - new Date(at).getTimezoneOffset() * 60_000);
+}
+
 /** Made once per launch; making one that is there already changes nothing. */
 function makeChannels() {
   channels ??= Promise.all([
@@ -106,7 +116,7 @@ export function usePhone(timer: Timer, current: string | undefined, settings: Se
           title,
           body,
           sound,
-          schedule: Schedule.at(new Date(at), false, true),
+          schedule: Schedule.at(when(at), false, true),
           ...(android && {
             channelId: sound ? CHIME : QUIET,
             // The ring in the status bar (res/drawable), in the lavender accent.

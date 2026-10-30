@@ -20,8 +20,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ICONS = ROOT / "src-tauri" / "icons"
 SOUNDS = ROOT / "src-tauri" / "sounds"
-# Android plays a notification's sound from the app's raw resources.
+# The phones play a notification's sound from inside the app: Android from
+# its raw resources, iOS from the app bundle (project.yml takes fokus_iOS/ in).
 ANDROID_RAW = ROOT / "src-tauri" / "gen" / "android" / "app" / "src" / "main" / "res" / "raw"
+IOS_APP = ROOT / "src-tauri" / "gen" / "apple" / "fokus_iOS"
 
 CREAM = (0xFB, 0xF8, 0xF4)
 LAVENDER_SOFT = (0xEC, 0xE3, 0xF3)
@@ -117,6 +119,30 @@ def app_icon(size: int = 1024) -> None:
     write_png(ICONS / "app-icon.png", size, size, pixels)
 
 
+def phone_icon(size: int = 1024) -> None:
+    """The phones' icon: the tile's colours to the edges, no corners or shadow
+    (iOS and Android cut their own shape), and the ring small enough to stay
+    inside Android's safe zone. `npx tauri icon` makes their sizes from it."""
+    c = size / 2
+    ring_r = size * 0.245
+    ring_w = size * 0.072
+    sweep = 1.5 * math.pi
+
+    pixels = bytearray(size * size * 4)
+    for y in range(size):
+        t = y / size
+        tile_color = tuple(round(CREAM[i] * (1 - t) + LAVENDER_SOFT[i] * t) for i in range(3))
+        for x in range(size):
+            px, py = x + 0.5, y + 0.5
+            p = [*tile_color, 1.0]
+            over(p, TRACK, coverage(ring(px, py, c, c, ring_r, ring_w)))
+            over(p, ACCENT, coverage(arc(px, py, c, c, ring_r, ring_w, sweep)))
+            o = (y * size + x) * 4
+            pixels[o : o + 4] = bytes((round(p[0]), round(p[1]), round(p[2]), 255))
+
+    write_png(ICONS / "phone-icon.png", size, size, pixels)
+
+
 def tray_icon(size: int = 44) -> None:
     """A template image: black on nothing, recoloured by macOS. The track is
     faint and the filled arc solid, so it reads as a timer at menu bar size."""
@@ -160,12 +186,15 @@ def chime(rate: int = 44100) -> None:
     if ANDROID_RAW.parent.exists():
         ANDROID_RAW.mkdir(exist_ok=True)
         shutil.copyfile(SOUNDS / "chime.wav", ANDROID_RAW / "chime.wav")
+    if IOS_APP.exists():
+        shutil.copyfile(SOUNDS / "chime.wav", IOS_APP / "chime.wav")
 
 
 if __name__ == "__main__":
     ICONS.mkdir(parents=True, exist_ok=True)
     SOUNDS.mkdir(parents=True, exist_ok=True)
     app_icon()
+    phone_icon()
     tray_icon()
     chime()
-    print("wrote", ICONS / "app-icon.png", ICONS / "tray.png", SOUNDS / "chime.wav")
+    print("wrote", ICONS / "app-icon.png", ICONS / "phone-icon.png", ICONS / "tray.png", SOUNDS / "chime.wav")

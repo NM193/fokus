@@ -2468,6 +2468,7 @@ button:disabled {
   /* Sixteen pixels or more, or iOS zooms the page into a field you tap. */
   .field input,
   .task__edit input,
+  .segmented__field,
   .notes,
   .select {
     font-size: 1rem;
