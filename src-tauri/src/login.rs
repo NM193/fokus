@@ -1,18 +1,21 @@
 //! Opening at login, quietly: the timer belongs in the menu bar from the
-//! moment the Mac starts, without a window in the way.
+//! moment the Mac starts, without a window in the way. On Windows the same
+//! plugin writes the registry's Run key instead.
 
 use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Wry};
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+#[cfg(target_os = "macos")]
+use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_autostart::ManagerExt;
 
 /// Passed by the login item, so a launch at login stays in the menu bar.
 const HIDDEN: &str = "--hidden";
 
 pub fn plugin() -> TauriPlugin<Wry> {
-    tauri_plugin_autostart::Builder::new()
-        .macos_launcher(MacosLauncher::LaunchAgent)
-        .args([HIDDEN])
-        .build()
+    let builder = tauri_plugin_autostart::Builder::new();
+    #[cfg(target_os = "macos")]
+    let builder = builder.macos_launcher(MacosLauncher::LaunchAgent);
+    builder.args([HIDDEN]).build()
 }
 
 pub fn launched_hidden() -> bool {
