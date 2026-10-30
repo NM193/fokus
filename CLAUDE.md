@@ -11,8 +11,8 @@ frontend still runs in a plain browser tab; everything desktop-only checks
 `isDesktop` (`src/lib/desktop.ts`). The repo is public
 (github.com/NM193/fokus): the app updates itself from its GitHub Releases.
 
-On its way to phones (Android, then iPhone), on the `mobile` branch: the same
-frontend in Tauri's mobile shell. See "The phone app" below.
+Also an Android and an iPhone app: the same frontend in Tauri's mobile
+shell. See "The phone app" below.
 
 ## Tech stack
 - React 18 + TypeScript + Vite; Tauri v2 (Rust) for the Mac app.
