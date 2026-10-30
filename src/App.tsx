@@ -14,6 +14,7 @@ import { loadSettings, saveSettings, type Settings } from "./lib/settings";
 import { useDesktop } from "./lib/useDesktop";
 import { usePhone } from "./lib/usePhone";
 import { useSession } from "./lib/useSession";
+import { useSync } from "./lib/useSync";
 import { PHASE_NAME, phaseLength, useTimer, type Timer } from "./lib/useTimer";
 import { useWidget } from "./lib/useWidget";
 
@@ -63,6 +64,8 @@ export default function App() {
       return next;
     });
   }, []);
+
+  const sync = useSync(session, settings, update);
 
   useEffect(() => {
     document.documentElement.dataset.palette = settings.palette;
@@ -181,6 +184,7 @@ export default function App() {
             update={update}
             historyCount={session.history.length}
             onClearHistory={session.clearHistory}
+            sync={sync}
             onShowGuide={() => setGuide(true)}
           />
         )}

@@ -18,8 +18,10 @@ frontend in Tauri's mobile shell. See "The phone app" below.
 - React 18 + TypeScript + Vite; Tauri v2 (Rust) for the Mac app.
 - State lives in `localStorage` (`src/lib/store.ts`), one versioned key per
   concern: `fokus.settings.v1`, `fokus.timer.v1`, `fokus.session.v1`,
-  `fokus.history.v1`, `fokus.guide.v1` (the first-launch guide was seen). A
-  shape change bumps the key rather than migrating.
+  `fokus.history.v1`, `fokus.guide.v1` (the first-launch guide was seen),
+  `fokus.sync.v1` (what sync knows, see "Sync"). A shape change bumps the
+  key rather than migrating: with sync, every device would have to move at
+  once, so the synced ones do not change shape.
   The dev app (http://localhost:1424) and the built app (tauri://) are
   different origins, so they do not share data.
 
@@ -34,6 +36,8 @@ frontend in Tauri's mobile shell. See "The phone app" below.
   off: Fokus's own lines, or yours from Settings → Session.
 - `src/lib/settings.ts` lengths, palette, window surface, auto-start, chime.
 - `src/lib/usePhone.ts` the phone app's notification at the end of a phase.
+- `src/lib/cloud.ts` the account and its data (Firebase), `src/lib/useSync.ts`
+  what goes up and what comes down.
 - `src/components/` `Sidebar` (nav pill taken from Tzz), `Dial` (ring and
   controls), `TaskList`, `HistoryView`, `SettingsView`, `Widget`,
   `WidgetWindow`, `AlertWindow` (the end-of-phase card), `EffectWindow`,
@@ -146,7 +150,34 @@ frontend behaves as in a browser, plus `usePhone`.
   `tauri.ios.conf.json` / `tauri.android.conf.json` give a plain, visible
   window (the Mac's starts hidden and see-through).
 - Not yet: auto-start while the phone is locked (the next phase starts when
-  the app is opened again), sync with the Mac.
+  the app is opened again).
+
+## Sync
+One account (Firebase Auth, email and password, made in the Firebase
+console: sign-up from the app is off) and its data in Firestore under
+`users/{uid}`, which the rules keep to that user. Settings → Sync signs in,
+once per device. localStorage stays the truth on each device; the cloud
+carries changes between them, live.
+
+- **What travels:** the session (`state/session`), History (`history/{id}`,
+  a record per document) and the timer's settings (`state/settings`: the
+  lengths, the round, auto-start, palette, the notes; `SHARED` in
+  useSync.ts). Sound, alerts and the Mac's windows stay with each device,
+  and so does the running timer: two would both ring.
+- **First sign-in on a device** joins: the cloud's session with this
+  device's other tasks added (by title), both Histories, the cloud's
+  settings. An empty cloud takes this device's, which is how the Mac's
+  data went up first.
+- **After that** session and settings each go by the newest change (`at`,
+  the device's clock, kept in `fokus.sync.v1`). A change here goes up after
+  0.8 s of quiet, and only once the first look at the cloud is in.
+- **History is a set.** `known` is the records seen both here and in the
+  cloud: missing here now means deleted here, missing there means deleted
+  elsewhere. Only records the cloud has confirmed become known, or one
+  written just before the app quit would be taken for deleted.
+- Firebase is a chunk of its own, loaded only once sync is on, so the Mac's
+  other windows never carry it. Popup and redirect sign-in are not used:
+  they need a web origin, and the apps have tauri:// ones.
 
 ## Mini timer (widget)
 A small always-on-top window with the time, phase, current task, start/pause
@@ -227,6 +258,10 @@ pastel key. The rules that carry it:
   `src-tauri/gen/android/app/build/outputs/apk/universal/release/`;
   `--debug --target aarch64` for the emulator (`emulator -avd s22 -no-window`, then
   `adb install -r`). A debug build's web view can be driven from Playwright's `_android`.
+- Sync on this Mac, no account needed: `npx firebase-tools emulators:start --only auth,firestore --project demo-fokus`
+  (needs Java; `firebase.json`, `firestore.rules`), then `VITE_FOKUS_EMULATOR=1 npm run dev`. A test user:
+  `curl -X POST "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo" -H 'Content-Type: application/json' -d '{"email":"test@fokus.dev","password":"fokus-test-1"}'`.
+  Each browser window (or Playwright context) is a device.
 - iPhone: `npx tauri ios build --debug --target aarch64-sim` -- `src-tauri/gen/apple/build/arm64-sim/Fokus.app`
   for a simulator (`xcrun simctl boot`, `install`, `launch`: no window). A UI-test
   target in a scratch Xcode project (`XCUIApplication(bundleIdentifier:)`) can tap

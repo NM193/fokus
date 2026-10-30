@@ -8,7 +8,7 @@ export type Task = {
 };
 
 /** The session in progress: its tasks and the focus time spent on them. */
-type Session = {
+export type Session = {
   startedAt: number;
   focusMs: number;
   rounds: number;
@@ -128,9 +128,15 @@ export function useSession() {
 
   const clearHistory = useCallback(() => setHistory([]), []);
 
+  /** Take the session or History as another device left them (useSync). */
+  const adopt = useCallback((next: Session) => setSession(next), []);
+  const adoptHistory = useCallback((next: SessionRecord[]) => setHistory(next), []);
+
   const done = session.tasks.filter((t) => t.done).length;
 
   return {
+    /** The whole session, as it is kept and synced. */
+    state: session,
     tasks: session.tasks,
     startedAt: session.startedAt,
     focusMs: session.focusMs,
@@ -148,5 +154,7 @@ export function useSession() {
     addRound,
     end,
     clearHistory,
+    adopt,
+    adoptHistory,
   };
 }

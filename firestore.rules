@@ -1,0 +1,11 @@
+rules_version = '2';
+// Fokus's sync (src/lib/cloud.ts): everything lives under users/{uid}, and
+// only that user, signed in, reads or writes it. Published in the Firebase
+// console (Firestore → Rules); the emulator reads it from here.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

@@ -1850,6 +1850,45 @@ button:disabled {
   color: var(--caption);
 }
 
+/* Settings → Sync: two fields and the button on one line, like the task field's pill. */
+.signin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  max-width: 36rem;
+}
+
+.signin input {
+  min-width: 0;
+  height: 2.375rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  outline: 0;
+  background: var(--field);
+  color: var(--ink);
+  font: 400 0.875rem var(--font-sans);
+  user-select: text;
+  transition: border-color 0.25s;
+}
+
+.signin input:focus {
+  border-color: var(--accent);
+}
+
+.signin input::placeholder {
+  color: var(--caption);
+}
+
+.signin__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--caption);
+  font-size: 0.8125rem;
+}
+
 .segmented {
   display: inline-flex;
   padding: 0.1875rem;
@@ -2465,10 +2504,15 @@ button:disabled {
     padding-inline: 0.375rem;
   }
 
+  .signin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* Sixteen pixels or more, or iOS zooms the page into a field you tap. */
   .field input,
   .task__edit input,
   .segmented__field,
+  .signin input,
   .notes,
   .select {
     font-size: 1rem;

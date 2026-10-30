@@ -10,4 +10,9 @@ export default defineConfig({
     port: 1424,
     strictPort: true,
   },
+  // Firebase is a chunk of its own (~700 kB), loaded from the app, and only
+  // once sync is on (src/lib/cloud.ts).
+  build: {
+    chunkSizeWarningLimit: 800,
+  },
 });

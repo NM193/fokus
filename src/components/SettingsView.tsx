@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { isDesktop, isPhone } from "../lib/desktop";
 import { timeLabel } from "../lib/format";
@@ -25,6 +25,7 @@ import {
 } from "../lib/settings";
 import { chime } from "../lib/sound";
 import { install, look, useUpdater } from "../lib/updater";
+import type { SyncApi, SyncState } from "../lib/useSync";
 import { Round } from "./Round";
 import { UpdateProgress } from "./UpdateNotice";
 
@@ -34,6 +35,7 @@ type Props = {
   historyCount: number;
   onClearHistory: () => void;
   onShowGuide: () => void;
+  sync: SyncApi;
 };
 
 const PALETTES: { value: Palette; label: string; swatch: string[] }[] = [
@@ -42,7 +44,9 @@ const PALETTES: { value: Palette; label: string; swatch: string[] }[] = [
   { value: "rose", label: "Rose", swatch: ["#FFF8F2", "#F7DBD3", "#DDB8BC", "#A17F8E"] },
 ];
 
-export function SettingsView({ settings, update, historyCount, onClearHistory, onShowGuide }: Props) {
+export function SettingsView({ settings, update, historyCount, onClearHistory, onShowGuide, sync }: Props) {
+  const device = isPhone ? "phone" : "Mac";
+  const synced = sync.email !== null;
   // Hear what was picked, once the slider has come to rest.
   const listen = useRef<number | undefined>(undefined);
   function tryOut(sound: SoundName, volume: number) {
@@ -229,7 +233,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         <Setting
           wide
           title="When it is all done"
-          hint={`A line under the score once every task is ticked off, a different one each session. One per line, kept on this ${isPhone ? "phone" : "Mac"} only. Left empty, Fokus says one of its own.`}
+          hint={`A line under the score once every task is ticked off, a different one each session. One per line, kept ${synced ? "in your account" : `on this ${device} only`}. Left empty, Fokus says one of its own.`}
         >
           <textarea
             className="notes"
@@ -241,6 +245,13 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
           />
         </Setting>
       </div>
+
+      {sync.available && (
+        <div className="section">
+          <h2>Sync</h2>
+          <Account sync={sync} />
+        </div>
+      )}
 
       {/* A phone has no window to float over: the mini timer is for a desktop. */}
       {!isPhone && (
@@ -342,7 +353,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         <h2>Data</h2>
         <Setting
           title="History"
-          hint={`${historyCount} ${historyCount === 1 ? "session" : "sessions"} kept on this ${isPhone ? "phone" : "Mac"}.`}
+          hint={`${historyCount} ${historyCount === 1 ? "session" : "sessions"}, kept on this ${device}${synced ? " and in your account: clearing it clears it everywhere" : ""}.`}
         >
           <ConfirmButton disabled={historyCount === 0} onConfirm={onClearHistory}>
             Clear history
@@ -373,6 +384,89 @@ function Setting({
       </div>
       <div className="setting__control">{children}</div>
     </div>
+  );
+}
+
+/** How a signed-in device stands with the cloud, in a few words. */
+function syncLine(state: SyncState): string {
+  switch (state.kind) {
+    case "synced":
+      return `Synced at ${timeLabel(state.at)}.`;
+    case "saving":
+      return "Saving…";
+    case "connecting":
+      return "Connecting…";
+    case "offline":
+      return "Offline. It catches up once you are back online.";
+    case "failed":
+      return `Sync stopped: ${state.message}`;
+    default:
+      return "";
+  }
+}
+
+/** Sign in once on each device; after that it just keeps up. */
+function Account({ sync }: { sync: SyncApi }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(await sync.signIn(email, password));
+    setBusy(false);
+    setPassword("");
+  }
+
+  if (sync.email) {
+    return (
+      <Setting title="Your account" hint={`${sync.email}. ${syncLine(sync.state)}`}>
+        <button type="button" className="ghost ghost--small" onClick={() => void sync.signOut()}>
+          Sign out
+        </button>
+      </Setting>
+    );
+  }
+
+  if (sync.state.kind === "connecting") {
+    return (
+      <Setting title="Your account" hint="Connecting…">
+        <span />
+      </Setting>
+    );
+  }
+
+  return (
+    <Setting
+      wide
+      title="Your account"
+      hint="Tasks, History and the timer's lengths, the same on the Mac and the phone. Sign in on each; what is already here is kept."
+    >
+      <form className="signin" onSubmit={(event) => void submit(event)}>
+        <input
+          type="email"
+          autoComplete="username"
+          placeholder="Email"
+          aria-label="Email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <input
+          type="password"
+          autoComplete="current-password"
+          placeholder="Password"
+          aria-label="Password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+        <button type="submit" className="cta cta--small" disabled={busy || !email.trim() || !password}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+        {error && <p className="signin__error">{error}</p>}
+      </form>
+    </Setting>
   );
 }
 
