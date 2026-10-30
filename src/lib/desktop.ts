@@ -23,6 +23,15 @@ export const isPhone =
  */
 export const isDesktop = isApp && !isPhone;
 
+/**
+ * The desktop app on Windows rather than the Mac. Most of it is the same;
+ * what differs checks this, and the page carries it as data-os (main.tsx).
+ */
+export const isWindows = isDesktop && /Windows/.test(navigator.userAgent);
+
+/** The keys that start and pause from anywhere (shortcut.rs): the same keys on both, named as each names them. */
+export const SHORTCUT = isWindows ? "Ctrl+Alt+F" : "⌃⌥F";
+
 /** This web view is the mini timer's window, not the app's (src-tauri/src/widget.rs). */
 export const isWidgetWindow = isDesktop && getCurrentWindow().label === "widget";
 /** This web view is the end-of-phase card (src-tauri/src/alert.rs). */

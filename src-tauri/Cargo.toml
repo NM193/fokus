@@ -31,6 +31,16 @@ tauri-plugin-process = "2"
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = "2.1"
 
+# Windows: the title bar's colours and the floating windows' corners (DWM),
+# the taskbar's theme (the registry), and the chime (PlaySound).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_Media_Audio",
+  "Win32_System_Registry",
+] }
+
 [profile.release]
 codegen-units = 1
 lto = true

@@ -64,6 +64,21 @@ pub fn set_glass(app: AppHandle, glass: bool) {
     glass::main(&app, glass);
 }
 
+/// Windows: the title bar in the palette's colours (frame.rs). Nothing to do
+/// elsewhere: the Mac's has none to paint.
+#[tauri::command]
+pub fn set_frame(app: AppHandle, caption: String, text: String, border: String) {
+    #[cfg(windows)]
+    {
+        use tauri::Manager;
+        if let Some(window) = app.get_webview_window("main") {
+            crate::frame::paint(&window, &caption, &text, &border);
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = (app, caption, text, border);
+}
+
 #[tauri::command]
 pub fn set_open_at_login(app: AppHandle, on: bool) {
     login::set(&app, on);

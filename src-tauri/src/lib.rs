@@ -1,4 +1,4 @@
-// Everything here but the notifications is the Mac's (and later a desktop's):
+// Everything here but the notifications is the desktop's, the Mac's and Windows's:
 // on a phone Fokus is its web view and the phone's notifications
 // (src/lib/usePhone.ts).
 #[cfg(desktop)]
@@ -13,6 +13,8 @@ mod commands;
 mod effect;
 #[cfg(desktop)]
 mod float;
+#[cfg(windows)]
+mod frame;
 #[cfg(desktop)]
 mod glass;
 #[cfg(desktop)]
@@ -90,6 +92,7 @@ fn desktop() {
             commands::prepare_effect,
             commands::show_effect,
             commands::set_glass,
+            commands::set_frame,
             commands::set_open_at_login,
             commands::toggle_widget,
             commands::widget_open,

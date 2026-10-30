@@ -1526,6 +1526,19 @@ button:disabled {
   background: transparent;
 }
 
+/*
+  Windows has no glass behind the mini timer and the card (frame.rs): their
+  windows are solid, painted the paper with a breath of the palette, and
+  Windows rounds their corners.
+*/
+:root[data-os="windows"][data-window="widget"],
+:root[data-os="windows"][data-window="widget"] body,
+:root[data-os="windows"][data-window="alert"],
+:root[data-os="windows"][data-window="alert"] body {
+  background: color-mix(in srgb, var(--bg) 82%, var(--soft));
+}
+
+
 .alert {
   display: flex;
   flex-direction: column;

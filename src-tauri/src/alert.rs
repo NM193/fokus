@@ -58,7 +58,8 @@ pub fn prepare(app: &AppHandle) -> tauri::Result<()> {
         .inner_size(WIDTH, HEIGHT)
         .resizable(false)
         .decorations(false)
-        .transparent(true)
+        // As the mini timer's (widget.rs): no glass on Windows.
+        .transparent(cfg!(not(windows)))
         .shadow(true)
         .always_on_top(true)
         .visible_on_all_workspaces(true)
@@ -77,6 +78,8 @@ pub fn prepare(app: &AppHandle) -> tauri::Result<()> {
 
     let window = builder.build()?;
     glass::float(&window);
+    #[cfg(windows)]
+    crate::frame::round(&window);
     float::to_panel(&window, true)
 }
 

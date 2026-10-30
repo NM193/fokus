@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 import { widgetBox, widgetIdleBox, widgetLook } from "../components/Widget";
-import { EVENTS, isDesktop, on, type Command, type Snapshot } from "./desktop";
+import { EVENTS, isDesktop, isWindows, on, type Command, type Snapshot } from "./desktop";
 import type { Settings } from "./settings";
 import type { Timer } from "./useTimer";
 
@@ -59,6 +59,15 @@ export function useDesktop(timer: Timer, current: string | undefined, settings: 
     if (!isDesktop) return;
     void invoke("set_glass", { glass: settings.surface === "glass" });
   }, [settings.surface]);
+
+  // Windows draws the title bar itself, in the colours it is given: the
+  // palette's paper, ink and rim (frame.rs). App sets the palette just before.
+  useEffect(() => {
+    if (!isWindows) return;
+    const css = getComputedStyle(document.documentElement);
+    const color = (name: string) => css.getPropertyValue(name).trim();
+    void invoke("set_frame", { caption: color("--bg"), text: color("--ink"), border: color("--mid") });
+  }, [settings.palette]);
 
   useEffect(() => {
     if (!isDesktop) return;

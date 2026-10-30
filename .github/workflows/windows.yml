@@ -1,0 +1,52 @@
+# Fokus for Windows, built and tried on GitHub's Windows machines: no Mac can
+# do either. On a push to the `windows` branch, or by hand. The installer and
+# the pictures from scripts/windows-check.mjs are the run's artifacts.
+#
+# Nothing here releases anything: installed copies update only from a GitHub
+# Release (scripts/release.sh).
+name: Windows
+
+on:
+  push:
+    branches: [windows]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Server 2025 is Windows 11 underneath: its title bars take colours and
+    # its windows round their corners, as on her PC.
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build the installer
+        run: npx tauri build --bundles nsis
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+
+      - name: Install it, open it, take pictures
+        run: |
+          npm install --no-save playwright-core
+          node scripts/windows-check.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pictures
+          path: windows-check/

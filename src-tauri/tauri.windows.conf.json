@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "title": "Fokus",
+        "label": "main",
+        "width": 1040,
+        "height": 720,
+        "minWidth": 880,
+        "minHeight": 640,
+        "resizable": true,
+        "theme": "Light",
+        "visible": false
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["nsis"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { isDesktop, isPhone } from "../lib/desktop";
+import { isDesktop, isPhone, isWindows, SHORTCUT } from "../lib/desktop";
 import { timeLabel } from "../lib/format";
 import { NOTES } from "../lib/notes";
 import { flash } from "../lib/notify";
@@ -45,7 +45,7 @@ const PALETTES: { value: Palette; label: string; swatch: string[] }[] = [
 ];
 
 export function SettingsView({ settings, update, historyCount, onClearHistory, onShowGuide, sync }: Props) {
-  const device = isPhone ? "phone" : "Mac";
+  const device = isPhone ? "phone" : isWindows ? "PC" : "Mac";
   const synced = sync.email !== null;
   // Hear what was picked, once the slider has come to rest.
   const listen = useRef<number | undefined>(undefined);
@@ -81,7 +81,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
             ))}
           </div>
         </Setting>
-        {isDesktop && (
+        {isDesktop && !isWindows && (
           <Setting
             title="Window"
             hint="Glass lets your desktop show through, softly blurred under the palette. Solid is plain paper."
@@ -151,7 +151,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
         <Setting title="Sound" hint="Played when a phase ends.">
           <Switch label="Sound" on={settings.sound} onChange={(sound) => update({ sound })} />
         </Setting>
-        {settings.sound && isDesktop && (
+        {settings.sound && isDesktop && !isWindows && (
           <Setting title="Which sound" hint="Fokus's own two soft notes, or one of the Mac's.">
             <select
               className="select"
@@ -172,7 +172,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
           </Setting>
         )}
         {settings.sound && (
-          <Setting title="Volume" hint={`On top of the ${isPhone ? "phone" : "Mac"}'s own volume.`}>
+          <Setting title="Volume" hint={`On top of the ${device}'s own volume.`}>
             <span className="volume">
               <input
                 type="range"
@@ -192,7 +192,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
             </span>
           </Setting>
         )}
-        {isDesktop && (
+        {isDesktop && !isWindows && (
           <Setting title="Effect" hint="What you see with the sound when a phase ends. Pick one to see it.">
             <Segmented<Effect>
               label="Effect"
@@ -276,7 +276,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
               onChange={(widgetSize) => update({ widgetSize })}
             />
           </Setting>
-          {isDesktop && (
+          {isDesktop && !isWindows && (
             <Setting title="Opacity" hint="Lower lets what is behind it show through.">
               <Segmented
                 label="Opacity"
@@ -299,7 +299,7 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
             title="Start and pause"
             hint={
               isDesktop
-                ? "The button in the ring that fills as a phase passes. Without it, ⌃⌥F still starts and pauses."
+                ? `The button in the ring that fills as a phase passes. Without it, ${SHORTCUT} still starts and pauses.`
                 : "The button in the ring that fills as a phase passes."
             }
           >
@@ -317,8 +317,15 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
 
       {isDesktop && (
         <div className="section">
-          <h2>Mac</h2>
-          <Setting title="Open at login" hint="Starts with the Mac, quietly, as the clock in the menu bar.">
+          <h2>{isWindows ? "Windows" : "Mac"}</h2>
+          <Setting
+            title="Open at login"
+            hint={
+              isWindows
+                ? "Starts with Windows, quietly, as the icon by the clock."
+                : "Starts with the Mac, quietly, as the clock in the menu bar."
+            }
+          >
             <Switch
               label="Open at login"
               on={settings.openAtLogin}
@@ -326,8 +333,8 @@ export function SettingsView({ settings, update, historyCount, onClearHistory, o
             />
           </Setting>
           <Setting title="Start and pause from anywhere" hint="Works in every app, with Fokus hidden.">
-            <kbd className="keys" aria-label="Control Option F">
-              ⌃⌥F
+            <kbd className="keys" aria-label={isWindows ? "Control Alt F" : "Control Option F"}>
+              {SHORTCUT}
             </kbd>
           </Setting>
         </div>

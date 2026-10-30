@@ -59,9 +59,20 @@ pub fn start(app: AppHandle) {
     thread::spawn(move || {
         let mut shown = String::new();
         let mut last_due: Option<Instant> = None;
+        #[cfg(windows)]
+        let mut ticks: u32 = 0;
         loop {
             let state = app.state::<Clock>().get();
             let now = now_ms();
+
+            // About every five seconds: the taskbar may have turned light or dark.
+            #[cfg(windows)]
+            {
+                ticks = ticks.wrapping_add(1);
+                if ticks % 20 == 0 {
+                    tray::follow_taskbar(&app);
+                }
+            }
 
             let next = title(&state, now);
             if next != shown {

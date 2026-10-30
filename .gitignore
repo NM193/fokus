@@ -9,3 +9,6 @@ dist
 src-tauri/target
 # Made by the build; the phone projects in gen/ are kept
 src-tauri/gen/schemas
+
+# Pictures from scripts/windows-check.mjs (made on GitHub's Windows machines)
+windows-check/

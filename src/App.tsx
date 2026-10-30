@@ -7,7 +7,7 @@ import { SettingsView } from "./components/SettingsView";
 import { Sidebar, type Status, type View } from "./components/Sidebar";
 import { TaskList } from "./components/TaskList";
 import { Widget, widgetBox, widgetLine, widgetLook } from "./components/Widget";
-import { isDesktop } from "./lib/desktop";
+import { isDesktop, isWindows } from "./lib/desktop";
 import { clock, duration } from "./lib/format";
 import { card, flash, phaseEnded, tell } from "./lib/notify";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
@@ -71,9 +71,10 @@ export default function App() {
     document.documentElement.dataset.palette = settings.palette;
   }, [settings.palette]);
 
-  // Glass needs a window macOS can see through, so a browser tab stays solid.
+  // Glass needs a window macOS can see through, so a browser tab stays solid,
+  // and so does Windows for now (its window is not see-through).
   useEffect(() => {
-    document.documentElement.dataset.surface = isDesktop ? settings.surface : "solid";
+    document.documentElement.dataset.surface = isDesktop && !isWindows ? settings.surface : "solid";
   }, [settings.surface]);
 
   useDesktop(timer, current, settings);
@@ -118,8 +119,9 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* The window has no title bar; this strip is what it is dragged by. */}
-      {isDesktop && <div className="drag-strip" data-tauri-drag-region="" />}
+      {/* The Mac's window has no title bar; this strip is what it is dragged by.
+          Windows keeps its own (frame.rs). */}
+      {isDesktop && !isWindows && <div className="drag-strip" data-tauri-drag-region="" />}
 
       <Sidebar
         view={view}

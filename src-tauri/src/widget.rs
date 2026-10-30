@@ -219,7 +219,9 @@ fn open(app: &AppHandle) -> tauri::Result<()> {
         .inner_size(width, height)
         .resizable(false)
         .decorations(false)
-        .transparent(true)
+        // Windows has no glass behind it: its page paints the paper, and
+        // Windows rounds the corners (frame.rs).
+        .transparent(cfg!(not(windows)))
         .shadow(true)
         .always_on_top(true)
         .visible_on_all_workspaces(true)
@@ -235,6 +237,8 @@ fn open(app: &AppHandle) -> tauri::Result<()> {
 
     let window = builder.build()?;
     glass::float(&window);
+    #[cfg(windows)]
+    crate::frame::round(&window);
     float::to_panel(&window, true)?;
     pin_page(app, full, HOME);
 
@@ -332,11 +336,26 @@ fn resize(app: &AppHandle, (width, height): (f64, f64), place: Place) {
     float::glide(|| window.animator().setFrame_display(to, true));
 }
 
+/// At once, keeping the corner it grows from where it is. Screen y goes down.
 #[cfg(not(target_os = "macos"))]
-fn resize(app: &AppHandle, (width, height): (f64, f64), _: Place) {
-    if let Some(window) = app.get_webview_window(LABEL) {
-        let _ = window.set_size(tauri::LogicalSize::new(width, height));
+fn resize(app: &AppHandle, (width, height): (f64, f64), place: Place) {
+    let Some(window) = app.get_webview_window(LABEL) else {
+        return;
+    };
+    let (Ok(origin), Ok(size), Ok(scale)) = (window.outer_position(), window.outer_size(), window.scale_factor())
+    else {
+        return;
+    };
+    let to = tauri::LogicalSize::new(width, height).to_physical::<i32>(scale);
+    let mut at = origin;
+    if place.right {
+        at.x += size.width as i32 - to.width;
     }
+    if !place.top {
+        at.y += size.height as i32 - to.height;
+    }
+    let _ = window.set_position(at);
+    let _ = window.set_size(to);
 }
 
 #[cfg(target_os = "macos")]
@@ -351,8 +370,13 @@ fn pointer_inside(app: &AppHandle) -> Option<bool> {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn pointer_inside(_: &AppHandle) -> Option<bool> {
-    None
+fn pointer_inside(app: &AppHandle) -> Option<bool> {
+    let window = app.get_webview_window(LABEL)?;
+    let at = app.cursor_position().ok()?;
+    let origin = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    let (left, top) = (origin.x as f64, origin.y as f64);
+    Some(at.x >= left && at.y >= top && at.x < left + size.width as f64 && at.y < top + size.height as f64)
 }
 
 /// Which corner of its screen the widget is nearest: (right, top).
@@ -370,7 +394,17 @@ fn corner(app: &AppHandle) -> Option<(bool, bool)> {
     ))
 }
 
+/// Screen y goes down here: the top half is the smaller y.
 #[cfg(not(target_os = "macos"))]
-fn corner(_: &AppHandle) -> Option<(bool, bool)> {
-    None
+fn corner(app: &AppHandle) -> Option<(bool, bool)> {
+    let window = app.get_webview_window(LABEL)?;
+    let origin = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    let screen = window.current_monitor().ok()??;
+    let middle = |start: i32, length: u32| start as f64 + length as f64 / 2.0;
+    let (at, area) = (screen.position(), screen.size());
+    Some((
+        middle(origin.x, size.width) > middle(at.x, area.width),
+        middle(origin.y, size.height) < middle(at.y, area.height),
+    ))
 }

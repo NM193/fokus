@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { isDesktop, isPhone } from "../lib/desktop";
+import { isDesktop, isPhone, isWindows, SHORTCUT } from "../lib/desktop";
 import { clock } from "../lib/format";
 import { flash } from "../lib/notify";
 import type { Settings } from "../lib/settings";
@@ -160,7 +160,7 @@ function guideSteps(settings: Settings, tryIt: () => void): Step[] {
 
   if (isDesktop) {
     steps.push({
-      eyebrow: "On your Mac",
+      eyebrow: isWindows ? "On your PC" : "On your Mac",
       title: (
         <>
           Always <em>in reach.</em>
@@ -168,10 +168,19 @@ function guideSteps(settings: Settings, tryIt: () => void): Step[] {
       ),
       body: (
         <ul className="guide__list">
-          <li>The time sits in the menu bar. Closing the window only hides it: the timer keeps going.</li>
-          <li>The mini timer floats over every app, full-screen ones too. Open it from the sidebar or the menu bar.</li>
+          {isWindows ? (
+            <>
+              <li>Fokus sits by the clock in the taskbar: point at it for the time. Closing the window only hides it: the timer keeps going.</li>
+              <li>The mini timer floats over every app. Open it from the sidebar, or from the icon by the clock.</li>
+            </>
+          ) : (
+            <>
+              <li>The time sits in the menu bar. Closing the window only hides it: the timer keeps going.</li>
+              <li>The mini timer floats over every app, full-screen ones too. Open it from the sidebar or the menu bar.</li>
+            </>
+          )}
           <li>
-            <kbd className="keys">⌃⌥F</kbd> starts and pauses from any app.
+            <kbd className="keys">{SHORTCUT}</kbd> starts and pauses from any app.
           </li>
         </ul>
       ),
@@ -187,7 +196,9 @@ function guideSteps(settings: Settings, tryIt: () => void): Step[] {
     ),
     body: (
       <p>
-        {isDesktop
+        {isWindows
+          ? "A sound, a note on screen and a card that waits until you answer it. Choose them in Settings."
+          : isDesktop
           ? "A sound, a soft glow and a card that waits until you answer it. Choose the sound, the effect and the card in Settings."
           : isPhone
             ? "A note and a soft chime, even with the phone locked. Turn either off in Settings."

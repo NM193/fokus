@@ -1,5 +1,7 @@
 //! The menu bar icon: the time left beside it, and a menu to run the timer
-//! without opening the window.
+//! without opening the window. On Windows it is the icon by the clock: the
+//! time is in its tooltip (Windows shows no text there), a click opens the
+//! window and the menu is on the right button, as Windows has it.
 //!
 //! The menu never runs the timer itself. It sends the window a command, so
 //! the window, the mini timer and the menu all go through one code path. A
@@ -26,7 +28,16 @@ const MENU_UPDATE: &str = "update";
 // Baked into the binary: the resource directory differs between `tauri dev`
 // and a bundled app, and an icon that fails to load leaves no menu bar item.
 // Drawn by scripts/make-assets.py.
+#[cfg(not(windows))]
 const TRAY_PNG: &[u8] = include_bytes!("../icons/tray.png");
+/// Windows recolours nothing: one for a light taskbar, one for a dark one.
+#[cfg(windows)]
+const TRAY_LIGHT_PNG: &[u8] = include_bytes!("../icons/tray-windows-light.png");
+#[cfg(windows)]
+const TRAY_DARK_PNG: &[u8] = include_bytes!("../icons/tray-windows-dark.png");
+/// The taskbar the icon was last drawn for: 0 not yet, 1 light, 2 dark.
+#[cfg(windows)]
+static TASKBAR: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
 /// What the menu shows beside its fixed items.
 #[derive(Default)]
@@ -39,6 +50,7 @@ struct Shown {
     update: Option<String>,
 }
 
+#[cfg(not(windows))]
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(Image::from_bytes(TRAY_PNG)?)
@@ -50,6 +62,52 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| on_menu(app, event.id().as_ref()))
         .build(app)?;
     Ok(())
+}
+
+#[cfg(windows)]
+pub fn build(app: &AppHandle) -> tauri::Result<()> {
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+
+    TrayIconBuilder::with_id(TRAY_ID)
+        .icon(Image::from_bytes(taskbar_icon())?)
+        .tooltip("Fokus")
+        .menu(&menu(app, &Shown::default())?)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| on_menu(app, event.id().as_ref()))
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main(tray.app_handle());
+            }
+        })
+        .build(app)?;
+    Ok(())
+}
+
+/// The icon for the taskbar as it is now, and remembers which that was.
+#[cfg(windows)]
+fn taskbar_icon() -> &'static [u8] {
+    let light = crate::frame::light_taskbar();
+    TASKBAR.store(if light { 1 } else { 2 }, std::sync::atomic::Ordering::Relaxed);
+    if light {
+        TRAY_LIGHT_PNG
+    } else {
+        TRAY_DARK_PNG
+    }
+}
+
+/// Redraws the icon if the taskbar has turned light or dark since. The clock
+/// asks every few seconds: Windows says nothing to an app without a window
+/// of its own in front.
+#[cfg(windows)]
+pub fn follow_taskbar(app: &AppHandle) {
+    let was = TASKBAR.load(std::sync::atomic::Ordering::Relaxed);
+    let now = if crate::frame::light_taskbar() { 1 } else { 2 };
+    if was == now {
+        return;
+    }
+    if let (Some(tray), Ok(icon)) = (app.tray_by_id(TRAY_ID), Image::from_bytes(taskbar_icon())) {
+        let _ = tray.set_icon(Some(icon));
+    }
 }
 
 fn menu(app: &AppHandle, shown: &Shown) -> tauri::Result<Menu<tauri::Wry>> {
@@ -114,7 +172,10 @@ fn change(app: &AppHandle, edit: impl FnOnce(&mut Shown)) {
 
 pub fn set_title(app: &AppHandle, title: &str) {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        #[cfg(not(windows))]
         let _ = tray.set_title(if title.is_empty() { None } else { Some(title) });
+        #[cfg(windows)]
+        let _ = tray.set_tooltip(Some(if title.is_empty() { "Fokus".to_string() } else { format!("Fokus\n{title}") }));
     }
 }
 

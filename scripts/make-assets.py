@@ -29,6 +29,7 @@ CREAM = (0xFB, 0xF8, 0xF4)
 LAVENDER_SOFT = (0xEC, 0xE3, 0xF3)
 TRACK = (0xE2, 0xD6, 0xEE)
 ACCENT = (0x8C, 0x7A, 0xA9)
+INK = (0x2E, 0x26, 0x38)
 
 
 def write_png(path: Path, width: int, height: int, pixels: bytearray) -> None:
@@ -143,9 +144,11 @@ def phone_icon(size: int = 1024) -> None:
     write_png(ICONS / "phone-icon.png", size, size, pixels)
 
 
-def tray_icon(size: int = 44) -> None:
-    """A template image: black on nothing, recoloured by macOS. The track is
-    faint and the filled arc solid, so it reads as a timer at menu bar size."""
+def tray_icon(name: str = "tray.png", color: tuple = (0, 0, 0), size: int = 44) -> None:
+    """The Mac's is a template image: black on nothing, recoloured by macOS.
+    Windows recolours nothing, so it gets one for each taskbar: Fokus's ink on
+    a light one, white on a dark one (tray.rs picks). The track is faint and
+    the filled arc solid, so it reads as a timer at menu bar size."""
     c = size / 2
     r = size * 0.33
     w = size * 0.11
@@ -158,8 +161,8 @@ def tray_icon(size: int = 44) -> None:
                 coverage(arc(px, py, c, c, r, w, 1.5 * math.pi)),
             )
             o = (y * size + x) * 4
-            pixels[o : o + 4] = bytes((0, 0, 0, round(a * 255)))
-    write_png(ICONS / "tray.png", size, size, pixels)
+            pixels[o : o + 4] = bytes((*color, round(a * 255)))
+    write_png(ICONS / name, size, size, pixels)
 
 
 def chime(rate: int = 44100) -> None:
@@ -196,5 +199,7 @@ if __name__ == "__main__":
     app_icon()
     phone_icon()
     tray_icon()
+    tray_icon("tray-windows-light.png", INK, 32)
+    tray_icon("tray-windows-dark.png", (0xFF, 0xFF, 0xFF), 32)
     chime()
-    print("wrote", ICONS / "app-icon.png", ICONS / "phone-icon.png", ICONS / "tray.png", SOUNDS / "chime.wav")
+    print("wrote", ICONS / "app-icon.png", ICONS / "phone-icon.png", ICONS / "tray*.png", SOUNDS / "chime.wav")
