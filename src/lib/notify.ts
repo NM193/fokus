@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { sendNotification } from "@tauri-apps/plugin-notification";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { isDesktop } from "./desktop";
+import { isDesktop, isWindows } from "./desktop";
 import type { Effect, Palette } from "./settings";
 import { PHASE_NAME, type Phase } from "./useTimer";
 
@@ -48,10 +48,11 @@ export async function card(notice: Notice) {
 
 /**
  * What you see with the sound (src-tauri/src/effect.rs): at the end of every
- * phase, the window in front or not, and when Settings tries one.
+ * phase, the window in front or not, and when Settings tries one. Not on
+ * Windows yet, where Settings does not offer it.
  */
 export function flash(effect: Effect, palette: Palette) {
-  if (!isDesktop || effect === "none") return;
+  if (!isDesktop || isWindows || effect === "none") return;
   void invoke("show_effect", { kind: effect, palette }).catch(() => {});
 }
 

@@ -48,6 +48,25 @@ pub fn same_browser<'a>(
     }
 }
 
+/// Runs `work`, which may make one of these windows, once the command asking
+/// for it has returned. On Windows a window made inside a command never
+/// finishes: WebView2 waits for the command, the command for WebView2, and
+/// the whole app stops (Tauri's docs, WebviewWindowBuilder). From another
+/// thread `run_on_main_thread` queues it for the event loop; from the main
+/// thread it would run it there and then. The Mac makes them in place.
+pub fn outside_command(app: &AppHandle, work: impl FnOnce(&AppHandle) + Send + 'static) {
+    #[cfg(windows)]
+    {
+        let app = app.clone();
+        thread::spawn(move || {
+            let handle = app.clone();
+            let _ = app.run_on_main_thread(move || work(&handle));
+        });
+    }
+    #[cfg(not(windows))]
+    work(app);
+}
+
 /// Makes a freshly built, hidden window a floating panel. With `rim` it is cut
 /// to the glass's corners and rimmed like it, whatever part of its page
 /// shows. It stays fully transparent until `reveal`.

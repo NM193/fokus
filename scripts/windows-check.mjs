@@ -10,21 +10,29 @@
 // is taken by PowerShell, so the title bar, the taskbar and the floating
 // windows are in it too.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 
 const OUT = "windows-check";
 const PORT = 9222;
 mkdirSync(OUT, { recursive: true });
-const log = [];
+// Written line by line: a run the workflow has to stop still leaves its log
+// with the pictures.
+const LOG = join(OUT, "log.txt");
+writeFileSync(LOG, "");
 const note = (line) => {
   console.log(line);
-  log.push(line);
+  appendFileSync(LOG, line + "\n");
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// Whatever happens, the log goes up with the pictures.
-process.on("exit", () => writeFileSync(join(OUT, "log.txt"), log.join("\n") + "\n"));
+// Anything that waits on Fokus gives up after a while, rather than wait for
+// an app that has stopped.
+const within = (ms, promise) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`no answer in ${ms / 1000} s`)), ms).unref()),
+  ]);
 
 function powershell(script) {
   return execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script], {
@@ -129,12 +137,19 @@ note(`main page: ${page.url()}, os: ${await page.evaluate(() => document.documen
 await sleep(2500);
 shoot("first-launch");
 
+// Everything in the page runs without the app behind it, so ask the app
+// itself: a window made inside a command once stopped it dead at launch.
+const answer = (command) => within(10_000, page.evaluate((c) => window.__TAURI_INTERNALS__.invoke(c), command));
+let failed = 0;
+const answers = await answer("widget_open").then(() => true, () => false);
+note(`the app answers: ${answers}`);
+if (!answers) failed++;
+
 // One step failing should not cost the pictures after it: each is tried,
 // pictured either way, and the run fails at the end if any did.
-let failed = 0;
 async function step(name, action) {
   try {
-    await action();
+    await within(60_000, action());
   } catch (error) {
     failed++;
     note(`${name} failed: ${error.message.split("\n")[0]}`);
@@ -176,6 +191,7 @@ await step("mini-timer", async () => {
   await page.locator('[role="radio"]', { hasText: "Lavender" }).first().click();
   await page.getByRole("button", { name: /Mini timer/ }).first().click();
   await sleep(3000);
+  note(`mini timer open: ${await answer("widget_open")}`);
 });
 
 // The end-of-phase card, as the timer sends it, and the chime with it.
@@ -187,6 +203,24 @@ await step("card", async () => {
   );
   await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("ring", { sound: "chime", volume: 0.6 }));
   await sleep(2500);
+});
+
+// The tray icon. Windows 11 keeps a new one under the ^ beside the clock, so
+// that is opened: at the right of a 1600 x 900 screen's taskbar.
+await step("tray", async () => {
+  powershell(`
+    Add-Type @"
+  using System; using System.Runtime.InteropServices;
+  public class M {
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, UIntPtr e);
+  }
+"@
+    [void][M]::SetCursorPos(1382, 876)
+    [M]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [M]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+  `);
+  await sleep(1500);
 });
 
 // Closing the window only hides it: Fokus stays by the clock. Closed as its

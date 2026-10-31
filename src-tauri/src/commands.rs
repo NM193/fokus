@@ -3,7 +3,7 @@
 use tauri::{AppHandle, State};
 
 use crate::clock::{Clock, TimerState};
-use crate::{alert, chime, effect, glass, login, tray, widget};
+use crate::{alert, chime, effect, float, glass, login, tray, widget};
 
 /// The window's timer changed: start, pause, a new phase, a reset.
 #[tauri::command]
@@ -27,14 +27,18 @@ pub fn ring(sound: String, volume: f64) {
 }
 
 /// Makes the end-of-phase card ahead of time, hidden (alert.rs says why).
+/// This and the others that may make a window do it outside the command
+/// (float.rs says why).
 #[tauri::command]
 pub fn prepare_alert(app: AppHandle) {
-    let _ = alert::prepare(&app);
+    float::outside_command(&app, |app| {
+        let _ = alert::prepare(app);
+    });
 }
 
 #[tauri::command]
 pub fn show_alert(app: AppHandle, notice: alert::Notice) {
-    alert::show(&app, notice);
+    float::outside_command(&app, move |app| alert::show(app, notice));
 }
 
 #[tauri::command]
@@ -50,13 +54,15 @@ pub fn hide_alert(app: AppHandle) {
 /// Makes the end-of-phase effect's window ahead of time, hidden.
 #[tauri::command]
 pub fn prepare_effect(app: AppHandle) {
-    let _ = effect::prepare(&app);
+    float::outside_command(&app, |app| {
+        let _ = effect::prepare(app);
+    });
 }
 
 /// "ripple" or "glow", now: at the end of a phase, and when Settings tries one.
 #[tauri::command]
 pub fn show_effect(app: AppHandle, kind: String, palette: String) {
-    effect::show(&app, kind, palette);
+    float::outside_command(&app, move |app| effect::show(app, kind, palette));
 }
 
 #[tauri::command]
@@ -86,7 +92,7 @@ pub fn set_open_at_login(app: AppHandle, on: bool) {
 
 #[tauri::command]
 pub fn toggle_widget(app: AppHandle) {
-    widget::toggle(&app);
+    float::outside_command(&app, widget::toggle);
 }
 
 #[tauri::command]

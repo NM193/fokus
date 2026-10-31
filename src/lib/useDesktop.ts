@@ -80,9 +80,9 @@ export function useDesktop(timer: Timer, current: string | undefined, settings: 
     if (isDesktop && settings.alert) void invoke("prepare_alert");
   }, [settings.alert]);
 
-  // The same for the effect that comes with the sound.
+  // The same for the effect that comes with the sound (none on Windows yet).
   useEffect(() => {
-    if (isDesktop && settings.effect !== "none") void invoke("prepare_effect");
+    if (isDesktop && !isWindows && settings.effect !== "none") void invoke("prepare_effect");
   }, [settings.effect]);
 
   // The widget draws itself from the snapshot; its window is sized to match,

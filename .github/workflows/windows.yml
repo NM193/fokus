@@ -16,6 +16,8 @@ jobs:
     # Server 2025 is Windows 11 underneath: its title bars take colours and
     # its windows round their corners, as on her PC.
     runs-on: windows-2025
+    # A build takes minutes; a stuck one would otherwise hold the runner six hours.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -57,6 +59,7 @@ jobs:
           npx tauri build --bundles nsis --config check.conf.json
 
       - name: Install it, open it, take pictures
+        timeout-minutes: 10
         run: |
           npm install --no-save playwright-core
           node scripts/windows-check.mjs
