@@ -22,6 +22,8 @@ const note = (line) => {
   log.push(line);
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Whatever happens, the log goes up with the pictures.
+process.on("exit", () => writeFileSync(join(OUT, "log.txt"), log.join("\n") + "\n"));
 
 function powershell(script) {
   return execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script], {
@@ -62,21 +64,49 @@ const exe = readdirSync(home).find((f) => f.toLowerCase().endsWith(".exe") && !/
 if (!exe) throw new Error(`nothing to run in ${home}: ${readdirSync(home).join(", ")}`);
 note(`installed: ${join(home, exe)}`);
 
+// Its output is piped: a Windows app has no console, but a panic still
+// writes to the handles it was given.
 const app = spawn(join(home, exe), [], {
-  detached: true,
-  stdio: "ignore",
-  env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${PORT}` },
+  stdio: ["ignore", "pipe", "pipe"],
+  env: {
+    ...process.env,
+    RUST_BACKTRACE: "1",
+    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${PORT}`,
+  },
 });
-app.unref();
+app.stdout.on("data", (d) => note(`fokus: ${String(d).trim()}`));
+app.stderr.on("data", (d) => note(`fokus (err): ${String(d).trim()}`));
+app.on("exit", (code) => note(`fokus exited with ${code}`));
+
+function run(command) {
+  try {
+    return execFileSync("cmd", ["/c", command], { encoding: "utf8" }).trim();
+  } catch (error) {
+    return `(${command}: ${error.message.split("\n")[0]})`;
+  }
+}
 
 let browser;
 for (let i = 0; i < 60 && !browser; i++) {
   await sleep(1000);
   try {
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`);
-  } catch {}
+  } catch (error) {
+    if (i % 15 === 14) note(`no web view yet: ${error.message.split("\n")[0]}`);
+  }
 }
-if (!browser) throw new Error("Fokus did not open (no web view on the debugging port)");
+if (!browser) {
+  shoot("no-web-view");
+  note(run('tasklist /FI "IMAGENAME eq fokus.exe"'));
+  note(run('tasklist /FI "IMAGENAME eq msedgewebview2.exe"'));
+  note(run("netstat -ano | findstr LISTENING | findstr 9222"));
+  note(
+    powershell(
+      "Get-ItemProperty 'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty pv",
+    ).trim() || "no WebView2 runtime in the registry",
+  );
+  throw new Error("Fokus did not open (no web view on the debugging port)");
+}
 
 // Every Fokus window is a page of the same app; the main one has no data-window.
 async function mainPage() {
@@ -179,7 +209,6 @@ await sleep(1500);
 shoot("closed");
 note(`still running after close: ${await page.evaluate(() => true).catch(() => false)}`);
 
-writeFileSync(join(OUT, "log.txt"), log.join("\n") + "\n");
 await browser.close().catch(() => {});
 try {
   execFileSync("taskkill", ["/IM", exe, "/F"]);

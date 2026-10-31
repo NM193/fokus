@@ -26,9 +26,11 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # Kept even when the check fails: the next try then builds in minutes.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
 
       - run: npm ci
 
