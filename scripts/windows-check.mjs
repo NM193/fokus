@@ -129,89 +129,107 @@ note(`main page: ${page.url()}, os: ${await page.evaluate(() => document.documen
 await sleep(2500);
 shoot("first-launch");
 
-// Past the guide, with a session that has some tasks in it.
-await page.evaluate(() => {
-  localStorage.setItem("fokus.guide.v1", JSON.stringify({ seen: true }));
-  localStorage.setItem(
-    "fokus.session.v1",
-    JSON.stringify({
-      startedAt: Date.now() - 50 * 60_000,
-      focusMs: 50 * 60_000,
-      rounds: 2,
-      tasks: [
-        { id: "a", title: "Draft the newsletter", done: true },
-        { id: "b", title: "Reply to Ana about the shoot", done: false },
-        { id: "c", title: "Sketch the spring palette", done: false },
-      ],
+// One step failing should not cost the pictures after it: each is tried,
+// pictured either way, and the run fails at the end if any did.
+let failed = 0;
+async function step(name, action) {
+  try {
+    await action();
+  } catch (error) {
+    failed++;
+    note(`${name} failed: ${error.message.split("\n")[0]}`);
+  }
+  shoot(name);
+}
+
+// Past the guide, and a few tasks in, as she would: typed. (A reload over
+// the debugging port never says it has loaded in WebView2.)
+await step("focus", async () => {
+  await page.locator(".guide__skip").click();
+  await sleep(600);
+  const add = page.getByPlaceholder("Add a task…");
+  for (const title of ["Draft the newsletter", "Reply to Ana about the shoot", "Sketch the spring palette"]) {
+    await add.fill(title);
+    await add.press("Enter");
+    await sleep(300);
+  }
+  await page.locator(".task__main", { hasText: "Draft the newsletter" }).click();
+  await sleep(1200);
+});
+
+await step("running", async () => {
+  await page.locator("button", { hasText: "Start" }).first().click();
+  await sleep(3000);
+});
+
+await step("settings", async () => {
+  await page.click('.nav > button[data-nav="settings"]');
+  await sleep(800);
+});
+
+await step("settings-rose", async () => {
+  await page.locator('[role="radio"]', { hasText: "Rose" }).first().click();
+  await sleep(1200);
+});
+
+await step("mini-timer", async () => {
+  await page.locator('[role="radio"]', { hasText: "Lavender" }).first().click();
+  await page.getByRole("button", { name: /Mini timer/ }).first().click();
+  await sleep(3000);
+});
+
+// The end-of-phase card, as the timer sends it, and the chime with it.
+await step("card", async () => {
+  await page.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("show_alert", {
+      notice: { ended: "focus", next: "short", minutes: 5, started: false, task: "Reply to Ana about the shoot" },
     }),
   );
+  await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("ring", { sound: "chime", volume: 0.6 }));
+  await sleep(2500);
 });
-await page.reload();
-await sleep(2000);
-shoot("focus");
-
-await page.locator("button", { hasText: "Start" }).first().click();
-await sleep(3000);
-shoot("running");
-
-await page.click('.nav > button[data-nav="settings"]');
-await sleep(800);
-shoot("settings");
-await page.locator('[role="radio"]', { hasText: "Rose" }).first().click();
-await sleep(1200);
-shoot("settings-rose");
-await page.locator('[role="radio"]', { hasText: "Lavender" }).first().click();
-
-await page.getByRole("button", { name: /Mini timer/ }).first().click();
-await sleep(3000);
-shoot("mini-timer");
-
-// The end-of-phase card, as the timer sends it.
-await page.evaluate(() =>
-  window.__TAURI_INTERNALS__.invoke("show_alert", {
-    notice: { ended: "focus", next: "short", minutes: 5, started: false, task: "Reply to Ana about the shoot" },
-  }),
-);
-await sleep(2500);
-shoot("card");
-await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("ring", { sound: "chime", volume: 0.6 }));
 
 // Closing the window only hides it: Fokus stays by the clock. Closed as its
 // X button would: WM_CLOSE to the biggest visible window titled Fokus (the
 // mini timer and the card are titled so too).
-powershell(`
-  Add-Type @"
-using System; using System.Runtime.InteropServices; using System.Text;
-public class W {
-  public delegate bool EnumProc(IntPtr h, IntPtr p);
-  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr p);
-  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
-  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
-  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
-  public struct RECT { public int L, T, R, B; }
-}
+await step("closed", async () => {
+  powershell(`
+    Add-Type @"
+  using System; using System.Runtime.InteropServices; using System.Text;
+  public class W {
+    public delegate bool EnumProc(IntPtr h, IntPtr p);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr p);
+    [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+    public struct RECT { public int L, T, R, B; }
+  }
 "@
-  $found = @{ h = [IntPtr]::Zero; a = 0 }
-  [void][W]::EnumWindows({ param($h, $p)
-    $sb = New-Object System.Text.StringBuilder 64
-    [void][W]::GetWindowText($h, $sb, 64)
-    if ($sb.ToString() -eq "Fokus" -and [W]::IsWindowVisible($h)) {
-      $r = New-Object W+RECT
-      [void][W]::GetWindowRect($h, [ref]$r)
-      $a = ($r.R - $r.L) * ($r.B - $r.T)
-      if ($a -gt $found.a) { $found.a = $a; $found.h = $h }
-    }
-    $true
-  }, [IntPtr]::Zero)
-  [void][W]::PostMessage($found.h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
-`);
-await sleep(1500);
-shoot("closed");
-note(`still running after close: ${await page.evaluate(() => true).catch(() => false)}`);
+    $found = @{ h = [IntPtr]::Zero; a = 0 }
+    [void][W]::EnumWindows({ param($h, $p)
+      $sb = New-Object System.Text.StringBuilder 64
+      [void][W]::GetWindowText($h, $sb, 64)
+      if ($sb.ToString() -eq "Fokus" -and [W]::IsWindowVisible($h)) {
+        $r = New-Object W+RECT
+        [void][W]::GetWindowRect($h, [ref]$r)
+        $a = ($r.R - $r.L) * ($r.B - $r.T)
+        if ($a -gt $found.a) { $found.a = $a; $found.h = $h }
+      }
+      $true
+    }, [IntPtr]::Zero)
+    [void][W]::PostMessage($found.h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+  `);
+  await sleep(1500);
+  note(`still running after close: ${await page.evaluate(() => true).catch(() => false)}`);
+});
 
 await browser.close().catch(() => {});
 try {
   execFileSync("taskkill", ["/IM", exe, "/F"]);
 } catch {}
 console.log(existsSync(OUT) ? "done" : "no pictures");
+if (failed) {
+  console.error(`${failed} step(s) failed: see log.txt`);
+  process.exit(1);
+}
