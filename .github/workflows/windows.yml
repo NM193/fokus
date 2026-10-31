@@ -1,14 +1,16 @@
 # Fokus for Windows, built and tried on GitHub's Windows machines: no Mac can
-# do either. On a push to the `windows` branch, or by hand. The installer and
-# the pictures from scripts/windows-check.mjs are the run's artifacts.
+# do either. On a push to the `windows` branch, on a release's tag, or by hand.
+# The installer and the pictures from scripts/windows-check.mjs are the run's
+# artifacts.
 #
-# Nothing here releases anything: installed copies update only from a GitHub
-# Release (scripts/release.sh).
+# Nothing here releases anything: scripts/release.sh waits for its tag's run,
+# signs the installer on the Mac (the key never comes here) and publishes it.
 name: Windows
 
 on:
   push:
     branches: [windows]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:

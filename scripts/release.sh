@@ -23,6 +23,11 @@
 #   - Only the version bump is committed: the repo is public, and whatever else
 #     is lying in the working tree is not this script's to publish.
 #
+#   - Windows is built by GitHub, from the tag pushed here (.github/workflows/
+#     windows.yml, so run this from a branch that has it), since no Mac can
+#     build it. Its installer is signed here: the key never goes to GitHub. On
+#     Windows the updater downloads that installer and runs it.
+#
 # The app is not signed by Apple, so the first open of the .dmg's app needs
 # System Settings -> Privacy & Security -> Open Anyway (right-click -> Open
 # before macOS 15). The release page also gives a Terminal line that installs
@@ -98,7 +103,7 @@ install="https://github.com/$repo/releases/latest/download/$(basename "$archive"
 body="$(cat <<EOF
 $notes
 
-## Install
+## On a Mac
 
 Paste this into Terminal (Fokus quit, if it is already installed):
 
@@ -113,6 +118,10 @@ xattr -dr com.apple.quarantine /Applications/Fokus.app
 \`\`\`
 
 or open System Settings → Privacy & Security → Open Anyway. Updates arrive inside the app after that.
+
+## On Windows
+
+Download Fokus_${version}_x64-setup.exe below and open it. Fokus is not signed by Microsoft either, so Windows may stop it with "Windows protected your PC": choose More info → Run anyway. It installs for you alone, with no administrator asked for, and updates arrive inside the app after that.
 EOF
 )"
 
@@ -123,37 +132,75 @@ git tag -f "v$version"
 git push -q origin HEAD
 git push -q -f origin "v$version"
 
+# The tag starts GitHub's Windows build of this very commit. The release is
+# made once that is in, so it never stands there with the Mac's half alone.
+echo "== windows"
+sha="$(git rev-parse HEAD)"
+run=""
+for _ in $(seq 1 20); do
+  run="$(gh run list --workflow windows.yml --event push --limit 20 \
+    --json databaseId,headSha -q ".[] | select(.headSha == \"$sha\") | .databaseId" | head -1)"
+  [ -n "$run" ] && break
+  sleep 3
+done
+if [ -z "$run" ]; then
+  echo "   GitHub started no Windows build for $sha. Has this branch windows.yml?"
+  exit 1
+fi
+echo "   waiting for https://github.com/$repo/actions/runs/$run"
+if ! gh run watch "$run" --exit-status --interval 30 > /dev/null; then
+  echo "   the Windows build failed; nothing is released. Mend it, or rerun it"
+  echo "   (gh run rerun $run), then run this again."
+  exit 1
+fi
+win="$(mktemp -d)"
+gh run download "$run" -n installer -D "$win"
+setup="$win/Fokus_${version}_x64-setup.exe"
+if [ ! -f "$setup" ]; then
+  echo "   the Windows build made no installer for $version: $(ls "$win")"
+  exit 1
+fi
+# Bound to the version, as tauri build binds the Mac's.
+npx tauri signer sign --app-version "$version" "$setup" > /dev/null
+if [ ! -f "$setup.sig" ]; then
+  echo "   the Windows installer could not be signed. Is the signing key right?"
+  exit 1
+fi
+
 # Re-runnable: a release that fell over halfway is mended by running this
-# again. The archive and its signature go up together.
+# again. Each update and its signature go up together.
 if gh release view "v$version" > /dev/null 2>&1; then
   echo "   v$version exists; replacing what it holds"
   gh release edit "v$version" --title "Fokus $version" --notes "$body" > /dev/null
-  gh release upload "v$version" "$archive" "$archive.sig" "$dmg" --clobber
+  gh release upload "v$version" "$archive" "$archive.sig" "$dmg" "$setup" "$setup.sig" --clobber
 else
   gh release create "v$version" --title "Fokus $version" --notes "$body" \
-    "$archive" "$archive.sig" "$dmg"
+    "$archive" "$archive.sig" "$dmg" "$setup" "$setup.sig"
 fi
 
 # The manifest names the archive as GitHub serves it, which is only known
 # after the upload: GitHub renames what it is given.
 url="$(gh release view "v$version" --json assets \
   -q '.assets[] | select(.name | endswith(".app.tar.gz")) | .url')"
-if [ -z "$url" ]; then
-  echo "The release has no .app.tar.gz asset. Nothing to point the manifest at."
+win_url="$(gh release view "v$version" --json assets \
+  -q '.assets[] | select(.name | endswith("-setup.exe")) | .url')"
+if [ -z "$url" ] || [ -z "$win_url" ]; then
+  echo "The release lacks its .app.tar.gz or its -setup.exe. Nothing to point the manifest at."
   exit 1
 fi
 
 # One universal archive serves both kinds of Mac.
-python3 - "$version" "$notes" "$url" "$archive" <<'MANIFEST'
+python3 - "$version" "$notes" "$url" "$archive" "$win_url" "$setup" <<'MANIFEST'
 import datetime, json, sys
-version, notes, url, archive = sys.argv[1:5]
-entry = {"signature": open(archive + ".sig").read().strip(), "url": url}
+version, notes, url, archive, win_url, setup = sys.argv[1:7]
+mac = {"signature": open(archive + ".sig").read().strip(), "url": url}
+windows = {"signature": open(setup + ".sig").read().strip(), "url": win_url}
 json.dump({
     "version": version,
     "notes": notes,
     "pub_date": datetime.datetime.now(datetime.timezone.utc)
         .replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-    "platforms": {"darwin-aarch64": entry, "darwin-x86_64": entry},
+    "platforms": {"darwin-aarch64": mac, "darwin-x86_64": mac, "windows-x86_64": windows},
 }, open("latest.json", "w"), indent=2)
 MANIFEST
 
@@ -167,19 +214,24 @@ echo "== check"
 here="$(mktemp -d)"
 gh release download "v$version" -p latest.json -D "$here" --clobber > /dev/null
 
-got="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["platforms"]["darwin-aarch64"]["url"])' "$here/latest.json")"
-code="$(curl -sIL -o /dev/null -w '%{http_code}' "$got")"
-echo "   archive:  $got"
-echo "   fetching it says: $code"
-[ "$code" = 200 ] || { echo "   that is not a download. The update would fail."; exit 1; }
-
-if ! python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["platforms"]["darwin-aarch64"]["signature"] == open(sys.argv[2]).read().strip() else 1)' \
-    "$here/latest.json" "$archive.sig"; then
-  echo "   the manifest's signature is not this build's. The app would refuse it."
-  exit 1
-fi
-echo "   signature:  matches this build"
-rm -rf "$here"
+# Each platform's update: there to download, and signed as this build.
+check() {
+  local platform="$1" built="$2" got code
+  got="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["platforms"][sys.argv[2]]["url"])' "$here/latest.json" "$platform")"
+  code="$(curl -sIL -o /dev/null -w '%{http_code}' "$got")"
+  echo "   $platform:  $got"
+  echo "   fetching it says: $code"
+  [ "$code" = 200 ] || { echo "   that is not a download. The update would fail."; exit 1; }
+  if ! python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["platforms"][sys.argv[2]]["signature"] == open(sys.argv[3]).read().strip() else 1)' \
+      "$here/latest.json" "$platform" "$built.sig"; then
+    echo "   the manifest's signature is not this build's. The app would refuse it."
+    exit 1
+  fi
+  echo "   signature:  matches this build"
+}
+check darwin-aarch64 "$archive"
+check windows-x86_64 "$setup"
+rm -rf "$here" "$win"
 
 # And the address the app is actually given, once GitHub agrees this is the
 # newest release.
@@ -198,5 +250,5 @@ if [ "$serving" != "$version" ]; then
 fi
 
 echo
-echo "Done. The .dmg is on https://github.com/$repo/releases/tag/v$version"
+echo "Done. The .dmg and the Windows installer are on https://github.com/$repo/releases/tag/v$version"
 echo "and installed copies will offer the update the next time they start."

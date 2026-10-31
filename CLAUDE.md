@@ -193,8 +193,11 @@ there too, and the page carries `data-os="windows"`.
   label is "main" (WebView2 keeps an about:blank too); `page.reload()` never
   resolves there. The machine has no GPU, so no window's corners are round in
   the pictures.
-- Not yet: Windows in a release (`release.sh` and `latest.json` know only the
-  Mac), fades, Mica glass, the effect.
+- **A release** (`release.sh`) pushes its tag, which builds Windows on GitHub;
+  it waits for that run, signs the installer on the Mac with the same key,
+  and adds it to the release and `windows-x86_64` to `latest.json`. Run it
+  from a branch that has windows.yml. A failed check there stops the release.
+- Not yet: fades, Mica glass, the effect.
 
 ## Sync
 One account (Firebase Auth, email and password, made in the Firebase
@@ -319,6 +322,7 @@ pastel key. The rules that carry it:
 - Windows: push to `windows`, then `gh run list --branch windows` and
   `gh run download <id> -n pictures` (and `-n installer`).
 - `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
+  the Windows installer (built by GitHub from the tag, about ten minutes),
   GitHub Release and the `latest.json` installed copies check at launch, every
   three hours and when the window comes up after an hour (`src/lib/updater.ts`).
   Copies before 0.3.1 check only at launch: they see a new version after
