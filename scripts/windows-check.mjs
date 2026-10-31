@@ -105,13 +105,17 @@ if (!browser) {
   throw new Error("Fokus did not open (no web view on the debugging port)");
 }
 
-// Every Fokus window is a page of the same app; the main one has no data-window.
+// Every Fokus window is a page of the same app, known by its Tauri label;
+// WebView2 keeps an about:blank of its own beside them.
 async function mainPage() {
   for (let i = 0; i < 20; i++) {
     for (const context of browser.contexts()) {
       for (const page of context.pages()) {
-        const which = await page.evaluate(() => document.documentElement.dataset.window ?? "main").catch(() => null);
-        if (which === "main") return page;
+        const label = await page
+          .evaluate(() => window.__TAURI_INTERNALS__?.metadata?.currentWindow?.label ?? null)
+          .catch(() => null);
+        if (i === 0) note(`page ${page.url()}: ${label}`);
+        if (label === "main") return page;
       }
     }
     await sleep(500);
