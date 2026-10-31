@@ -12,7 +12,8 @@ frontend still runs in a plain browser tab; everything desktop-only checks
 (github.com/NM193/fokus): the app updates itself from its GitHub Releases.
 
 Also an Android and an iPhone app: the same frontend in Tauri's mobile
-shell. See "The phone app" below.
+shell. See "The phone app" below. And a Windows app, the Mac's with Windows
+underneath: see "Windows".
 
 ## Tech stack
 - React 18 + TypeScript + Vite; Tauri v2 (Rust) for the Mac app.
@@ -48,7 +49,8 @@ shell. See "The phone app" below.
   (the end-of-phase card), `effect` (what you see with the sound), `float`
   (what those share: the panel, the rounded rim, glide and fade), `glass`
   (vibrancy), `chime` (the sound), `login` (open at login), `shortcut` (the
-  global key), `commands` (thin).
+  global key), `frame` (Windows: the title bar's colours, round corners, the
+  taskbar's theme), `commands` (thin).
 - `scripts/make-assets.py` draws the app icon, the menu bar icon and the
   chime. It is their only source; `npx tauri icon src-tauri/icons/app-icon.png`
   makes the icon sizes.
@@ -151,6 +153,48 @@ frontend behaves as in a browser, plus `usePhone`.
   window (the Mac's starts hidden and see-through).
 - Not yet: auto-start while the phone is locked (the next phase starts when
   the app is opened again).
+
+## Windows
+For her Windows 11 PC: the Mac app, Windows underneath. No Mac can build or
+run it (`ring` needs Windows's headers), so it is built and tried only on
+GitHub's Windows machines: `.github/workflows/windows.yml`, on a push to the
+`windows` branch. `isWindows` (desktop.ts) is this app, `isDesktop` is true
+there too, and the page carries `data-os="windows"`.
+
+- **Every window is solid** (`tauri.windows.conf.json`: opaque, 1040 × 720):
+  no glass behind them. The mini timer and the card paint the paper
+  themselves and get Windows 11's round corners (`frame::round`). Settings
+  hides glass, Which sound, Effect and the mini timer's Opacity there, and no
+  effect window is made.
+- **Windows's own title bar, in the palette's colours** (`frame.rs`, DWM): the
+  window sends `set_frame` (`--bg`, `--ink`, `--mid`) on every palette change.
+  It keeps the buttons and Snap layouts.
+- **No window is made inside a command** (`float::outside_command`): there
+  WebView2 waits for the command and the command for WebView2, and the whole
+  app stops. Whatever may make the card, the mini timer or the effect goes
+  through it; the Mac makes them in place.
+- **One browser:** WebView2 runs one per app and refuses a window that asks
+  for other arguments, so every window copies the main one's
+  (`float::same_browser`). It ignores `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`
+  once wry sets any: use `additionalBrowserArgs`.
+- **The sound** is Fokus's chime, played from memory by `PlaySoundW`.
+- **Tray:** a light or a dark ring after the taskbar's theme
+  (`icons/tray-windows-{light,dark}.png`, make-assets.py); a left click opens
+  the window, the right one the menu. Windows 11 keeps a new icon under the ^
+  at first.
+- **Ctrl+Alt+F** (`SHORTCUT`), the same keys as ⌃⌥F. On a Serbian layout that
+  costs AltGr+F (`[`).
+- **Open at login:** the same plugin writes the registry's Run key.
+- **The check:** the workflow builds the installer (NSIS, current user,
+  artifact "installer") and a second copy with WebView2's debugging port 9222,
+  never the real one. `scripts/windows-check.mjs` installs that copy, drives it
+  with Playwright over CDP and pictures the whole screen after each step:
+  artifact "pictures", with `log.txt`. The main page is the one whose Tauri
+  label is "main" (WebView2 keeps an about:blank too); `page.reload()` never
+  resolves there. The machine has no GPU, so no window's corners are round in
+  the pictures.
+- Not yet: Windows in a release (`release.sh` and `latest.json` know only the
+  Mac), fades, Mica glass, the effect.
 
 ## Sync
 One account (Firebase Auth, email and password, made in the Firebase
@@ -272,6 +316,8 @@ pastel key. The rules that carry it:
   target in a scratch Xcode project (`XCUIApplication(bundleIdentifier:)`) can tap
   the page and the system's alerts. For her iPhone: a free Apple ID's team
   (`APPLE_DEVELOPMENT_TEAM`, not in the repo); such an install runs 7 days.
+- Windows: push to `windows`, then `gh run list --branch windows` and
+  `gh run download <id> -n pictures` (and `-n installer`).
 - `bash scripts/release.sh 0.3.0 "What changed."` -- universal build, `.dmg`,
   GitHub Release and the `latest.json` installed copies check at launch, every
   three hours and when the window comes up after an hour (`src/lib/updater.ts`).
