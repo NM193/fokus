@@ -49,7 +49,7 @@ pub fn prepare(app: &AppHandle) -> tauri::Result<()> {
     if app.get_webview_window(LABEL).is_some() {
         return Ok(());
     }
-    let window = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html".into()))
+    let builder = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html".into()))
         .title("Fokus")
         .inner_size(400.0, 300.0)
         .resizable(false)
@@ -61,8 +61,8 @@ pub fn prepare(app: &AppHandle) -> tauri::Result<()> {
         .skip_taskbar(true)
         .focused(false)
         .visible(false)
-        .theme(Some(tauri::Theme::Light))
-        .build()?;
+        .theme(Some(tauri::Theme::Light));
+    let window = float::same_browser(app, builder).build()?;
     float::to_panel(&window, false)?;
 
     #[cfg(target_os = "macos")]

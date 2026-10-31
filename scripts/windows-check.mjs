@@ -4,10 +4,11 @@
 // windows-check/. The pictures, not this script, are the check: it fails only
 // if Fokus does not install or open.
 //
-// Fokus is driven through its web view's debugging port (WebView2 takes
-// Chromium's flags from WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS) with
-// Playwright, which the workflow installs; the screen is taken by PowerShell,
-// so the title bar, the taskbar and the floating windows are in it too.
+// Fokus is driven through its web view's debugging port with Playwright,
+// which the workflow installs. The port is asked for by the copy the workflow
+// builds for this (additionalBrowserArgs), never by the real one. The screen
+// is taken by PowerShell, so the title bar, the taskbar and the floating
+// windows are in it too.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -68,21 +69,17 @@ note(`installed: ${join(home, exe)}`);
 // writes to the handles it was given.
 const app = spawn(join(home, exe), [], {
   stdio: ["ignore", "pipe", "pipe"],
-  env: {
-    ...process.env,
-    RUST_BACKTRACE: "1",
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${PORT}`,
-  },
+  env: { ...process.env, RUST_BACKTRACE: "1" },
 });
 app.stdout.on("data", (d) => note(`fokus: ${String(d).trim()}`));
 app.stderr.on("data", (d) => note(`fokus (err): ${String(d).trim()}`));
 app.on("exit", (code) => note(`fokus exited with ${code}`));
 
-function run(command) {
+function run(file, args) {
   try {
-    return execFileSync("cmd", ["/c", command], { encoding: "utf8" }).trim();
+    return execFileSync(file, args, { encoding: "utf8" }).trim();
   } catch (error) {
-    return `(${command}: ${error.message.split("\n")[0]})`;
+    return `(${file} ${args.join(" ")}: ${error.message.split("\n")[0]})`;
   }
 }
 
@@ -97,9 +94,9 @@ for (let i = 0; i < 60 && !browser; i++) {
 }
 if (!browser) {
   shoot("no-web-view");
-  note(run('tasklist /FI "IMAGENAME eq fokus.exe"'));
-  note(run('tasklist /FI "IMAGENAME eq msedgewebview2.exe"'));
-  note(run("netstat -ano | findstr LISTENING | findstr 9222"));
+  note(run("tasklist", ["/FI", "IMAGENAME eq fokus.exe"]));
+  note(run("tasklist", ["/FI", "IMAGENAME eq msedgewebview2.exe"]));
+  note(run("netstat", ["-ano", "-p", "TCP"]).split("\n").filter((line) => line.includes(":9222")).join("\n") || "nothing on 9222");
   note(
     powershell(
       "Get-ItemProperty 'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty pv",

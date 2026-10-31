@@ -8,7 +8,7 @@
 use std::thread;
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, WebviewWindowBuilder, Wry};
 
 /// Every change of a floating window -- growing, shrinking, fading -- takes
 /// this long on this curve. Their pages move with the same (`--glide` and
@@ -30,6 +30,22 @@ tauri_nspanel::tauri_panel! {
             hides_on_deactivate: false
         }
     })
+}
+
+/// A window made here starts WebView2 with the main window's arguments
+/// (tauri.conf.json): WebView2 runs one browser for all of an app's windows
+/// and will not make a window that asks for others. The app as shipped has
+/// none; the Windows check gives the main window a debugging port
+/// (.github/workflows/windows.yml).
+pub fn same_browser<'a>(
+    app: &AppHandle,
+    builder: WebviewWindowBuilder<'a, Wry, AppHandle>,
+) -> WebviewWindowBuilder<'a, Wry, AppHandle> {
+    let main = app.config().app.windows.iter().find(|window| window.label == "main");
+    match main.and_then(|window| window.additional_browser_args.as_deref()) {
+        Some(args) => builder.additional_browser_args(args),
+        None => builder,
+    }
 }
 
 /// Makes a freshly built, hidden window a floating panel. With `rim` it is cut

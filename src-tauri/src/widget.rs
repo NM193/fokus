@@ -235,7 +235,7 @@ fn open(app: &AppHandle) -> tauri::Result<()> {
         builder = builder.position(size.width - width - MARGIN, TOP);
     }
 
-    let window = builder.build()?;
+    let window = float::same_browser(app, builder).build()?;
     glass::float(&window);
     #[cfg(windows)]
     crate::frame::round(&window);

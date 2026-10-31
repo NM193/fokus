@@ -42,6 +42,20 @@ jobs:
           name: installer
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
 
+      # The check drives Fokus through WebView2's debugging port, which only
+      # the app can ask for (additionalBrowserArgs): a second installer, with
+      # the port, made after the real one is kept.
+      - name: Build a copy the check can drive
+        shell: bash
+        run: |
+          node -e '
+            const conf = require("./src-tauri/tauri.windows.conf.json");
+            conf.app.windows[0].additionalBrowserArgs =
+              "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port=9222";
+            require("fs").writeFileSync("check.conf.json", JSON.stringify({ app: conf.app }));
+          '
+          npx tauri build --bundles nsis --config check.conf.json
+
       - name: Install it, open it, take pictures
         run: |
           npm install --no-save playwright-core
